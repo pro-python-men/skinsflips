@@ -1,0 +1,81 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import {
+  LayoutDashboard,
+  Package,
+  Calculator,
+  History,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+
+interface SidebarProps {
+  isCollapsed: boolean
+  onToggle: () => void
+}
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/inventory", label: "Inventory", icon: Package },
+  { href: "/calculator", label: "Flip Calculator", icon: Calculator },
+  { href: "/history", label: "Flip History", icon: History },
+  { href: "/settings", label: "Settings", icon: Settings },
+]
+
+export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const pathname = usePathname()
+
+  return (
+    <aside
+      className={cn(
+        "flex h-screen flex-col border-r border-border bg-sidebar transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
+      <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <span className="text-sm font-bold text-primary-foreground">CS</span>
+            </div>
+            <span className="font-semibold text-sidebar-foreground">Skin Flipper</span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      <nav className="flex-1 space-y-1 p-2">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-primary"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              )}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {!isCollapsed && <span>{item.label}</span>}
+            </Link>
+          )
+        })}
+      </nav>
+    </aside>
+  )
+}
