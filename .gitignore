@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*.local
+.env.local
+
+# Next.js builds (if present in repo)
+web/**/.next/
+web/**/node_modules/
+
+# Local backups/artifacts
+backup/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
