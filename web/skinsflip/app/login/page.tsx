@@ -31,7 +31,12 @@ export default function LoginPage() {
             Track your skin flips and maximize your ROI
           </p>
         </div>
-
+        <a
+  href="/api/auth/steam"
+  className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-white py-2 px-4 mb-4"
+>
+  Login with Steam
+</a>
         <form
           className="space-y-4"
           onSubmit={async (e) => {
