@@ -32,75 +32,16 @@ export default function LoginPage() {
           </p>
         </div>
         <a
-  href="/api/auth/steam"
-  className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-white py-2 px-4 mb-4"
->
-  Login with Steam
-</a>
-        <form
-          className="space-y-4"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            setLoading(true)
-            try {
-              const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-              })
-
-              const data = await res.json().catch(() => null)
-              if (!res.ok) throw new Error(data?.message || `Login failed (${res.status})`)
-
-              toast({ title: "Logged in" })
-              router.push(nextPath)
-            } catch (err: any) {
-              toast({
-                title: "Login failed",
-                description: err?.message || "Unknown error",
-                variant: "destructive",
-              })
-            } finally {
-              setLoading(false)
-            }
-          }}
+          href="/api/auth/steam"
+          className="w-full flex items-center justify-center gap-3 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-white py-2 px-4"
         >
-          <div>
-            <label className="mb-2 block text-sm font-medium text-muted-foreground">
-              Email
-            </label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-muted-foreground">
-              Password
-            </label>
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              autoComplete="current-password"
-            />
-          </div>
-
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Logging in…" : "Login"}
-          </Button>
-
-          <p className="text-center text-xs text-muted-foreground">
-            No account?{" "}
-            <Link href="/register" className="underline">
-              Register
-            </Link>
-          </p>
-        </form>
-
-        <div className="mt-8 rounded-lg bg-muted/50 p-4">
-          <h3 className="mb-2 text-sm font-medium text-foreground">Tip</h3>
-          <p className="text-xs text-muted-foreground">
-            You can keep Steam login later; email/password is enabled now.
-          </p>
-        </div>
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/3670/3670157.png"
+            alt="Steam"
+            className="w-5 h-5"
+          />
+          Login with Steam
+        </a>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { apiFetch } from "@/lib/api"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { FlipsTable, Flip } from "@/components/flips-table"
 import { HistoryFilters } from "@/components/history-filters"
@@ -21,22 +22,14 @@ export default function HistoryPage() {
       setError("")
 
       try {
-        const res = await fetch("/api/flips")
+        const data = await apiFetch("/api/flips")
 
-        // ❌ USUWAMY REDIRECT
-        if (res.status === 401) {
-          console.log("Not logged in - showing empty history")
-          setFlips([])
-          return
-        }
+      if (!data) {
+        setFlips([])
+        return
+      }
 
-        const data = await res.json().catch(() => [])
-
-        if (!res.ok) {
-          throw new Error((data as any)?.message || "Failed to fetch flips")
-        }
-
-        setFlips(Array.isArray(data) ? (data as Flip[]) : [])
+      setFlips(Array.isArray(data) ? (data as Flip[]) : [])
       } catch (e: any) {
         setError(e?.message || "Failed to load history")
       } finally {

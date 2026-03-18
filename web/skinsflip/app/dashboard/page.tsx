@@ -69,6 +69,14 @@ export default function DashboardPage() {
         apiFetch("/api/flips"),
       ])
 
+      if (statsData === null && flipsData === null) {
+        // Brak danych z autoryzacją - pokazujemy pusty dashboard.
+        setStats({ totalProfit: 0, averageROI: 0, totalFlips: 0, inventoryValue: 0 })
+        setFlips([])
+        setRoiData([])
+        return
+      }
+
       setStats({
         totalProfit: Number(statsData?.totalProfit ?? 0),
         averageROI: Number(statsData?.averageROI ?? 0),
@@ -86,6 +94,7 @@ export default function DashboardPage() {
 
       setRoiData(roiPoints)
     } catch (e: any) {
+      // jeśli apiFetch zwróci null, już było obsłużone; dla innych błędów wyświetlamy info
       setError(e?.message || "Failed to load dashboard")
     } finally {
       setLoading(false)

@@ -37,7 +37,11 @@ export function AddFlipForm({ onCreated }: Props) {
             });
 
             if (data === null) {
-              throw new Error("Not authenticated or request failed.");
+              toast({
+                title: "Zaloguj się przez Steam",
+                description: "Twoje konto nie jest zalogowane."
+              });
+              return;
             }
 
             setSkin("");

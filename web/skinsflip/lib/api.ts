@@ -7,7 +7,6 @@ export async function apiFetch(url: string, options?: RequestInit) {
 
     // 🔐 brak autoryzacji
     if (res.status === 401) {
-      console.log("Not authenticated")
       return null
     }
 
