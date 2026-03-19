@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-
+import cookieParser from "cookie-parser";
 import { getConfig } from "./config/env.js";
 import routes from "./routes/index.js";
 import errorHandler from "./shared/middleware/errorHandler.js";
@@ -17,6 +17,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // ===== Routes =====
 

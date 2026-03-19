@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -39,11 +40,14 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">CS</span>
-            </div>
-            <span className="font-semibold text-sidebar-foreground">Skin Flipper</span>
+          <div className="flex items-center">
+            <Image
+              src="/logostrona.png"
+              alt="CS Skin Flipper logo"
+              width={160}
+              height={40}
+              className="object-contain"
+            />
           </div>
         )}
         <Button

@@ -7,6 +7,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 
 type InventoryItem = {
@@ -41,13 +42,13 @@ export default function InventoryPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/inventory");
-      if (res.status === 401) {
-        router.replace("/login");
+      const data = await apiFetch("/api/inventory");
+      if (data === null) {
+        console.log("Not logged in - showing empty inventory");
+        setItems([]);
+        setLoading(false);
         return;
       }
-      const data = await res.json().catch(() => []);
-      if (!res.ok) throw new Error((data as any)?.message || "Failed to fetch inventory");
       setItems(Array.isArray(data) ? (data as InventoryItem[]) : []);
     } catch (e: any) {
       setError(e?.message || "Failed to load inventory");
@@ -81,7 +82,7 @@ export default function InventoryPage() {
               e.preventDefault();
               setSaving(true);
               try {
-                const res = await fetch("/api/inventory", {
+                const data = await apiFetch("/api/inventory", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -92,12 +93,9 @@ export default function InventoryPage() {
                   })
                 });
 
-                const data = await res.json().catch(() => null);
-                if (res.status === 401) {
-                  router.replace("/login");
-                  return;
+                if (data === null) {
+                  throw new Error("Not authenticated or request failed.");
                 }
-                if (!res.ok) throw new Error(data?.message || `Failed (${res.status})`);
 
                 setSkin("");
                 setPurchasePrice("");
@@ -212,14 +210,9 @@ export default function InventoryPage() {
                           size="sm"
                           onClick={async () => {
                             try {
-                              const res = await fetch(`/api/inventory/${it.id}`, { method: "DELETE" });
-                              if (res.status === 401) {
-                                router.replace("/login");
-                                return;
-                              }
-                              if (res.status !== 204) {
-                                const data = await res.json().catch(() => null);
-                                throw new Error(data?.message || `Failed (${res.status})`);
+                              const data = await apiFetch(`/api/inventory/${it.id}`, { method: "DELETE" });
+                              if (data === null) {
+                                throw new Error("Not authenticated or request failed.");
                               }
                               toast({ title: "Item deleted" });
                               await refresh();

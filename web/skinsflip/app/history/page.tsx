@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { apiFetch } from "@/lib/api"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { FlipsTable, Flip } from "@/components/flips-table"
 import { HistoryFilters } from "@/components/history-filters"
@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/empty-state"
 import { History } from "lucide-react"
 
 export default function HistoryPage() {
-  const router = useRouter()
   const [dateRange, setDateRange] = useState("All Time")
   const [weapon, setWeapon] = useState("All Weapons")
   const [profitFilter, setProfitFilter] = useState("All")
@@ -21,15 +20,16 @@ export default function HistoryPage() {
     const run = async () => {
       setLoading(true)
       setError("")
+
       try {
-        const res = await fetch("/api/flips")
-        if (res.status === 401) {
-          router.replace("/login")
-          return
-        }
-        const data = await res.json().catch(() => [])
-        if (!res.ok) throw new Error((data as any)?.message || "Failed to fetch flips")
-        setFlips(Array.isArray(data) ? (data as Flip[]) : [])
+        const data = await apiFetch("/api/flips")
+
+      if (!data) {
+        setFlips([])
+        return
+      }
+
+      setFlips(Array.isArray(data) ? (data as Flip[]) : [])
       } catch (e: any) {
         setError(e?.message || "Failed to load history")
       } finally {
@@ -38,7 +38,7 @@ export default function HistoryPage() {
     }
 
     run()
-  }, [router])
+  }, [])
 
   const filteredFlips = useMemo(() => {
     return flips.filter((flip) => {
@@ -46,8 +46,10 @@ export default function HistoryPage() {
         const skinWeapon = flip.skin.split(" | ")[0]
         if (skinWeapon !== weapon) return false
       }
+
       if (profitFilter === "Profitable Only" && flip.profit < 0) return false
       if (profitFilter === "Losses Only" && flip.profit >= 0) return false
+
       return true
     })
   }, [flips, weapon, profitFilter])
@@ -79,10 +81,8 @@ export default function HistoryPage() {
         {!loading && flips.length === 0 ? (
           <EmptyState
             icon={History}
-            title="You don't have any flips yet"
-            description="Add your first flip to start tracking your trading performance and ROI."
-            actionLabel="Add first flip"
-            actionHref="/dashboard"
+            title="No flips available"
+            description="Login to see your flip history."
           />
         ) : null}
 

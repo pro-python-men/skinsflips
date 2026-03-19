@@ -2,11 +2,15 @@ import { getConfig } from "../../config/env.js";
 import { ApiError } from "../errors/ApiError.js";
 import { verifyJwt } from "../security/jwt.js";
 
-export function requireAuth(req, _res, next) {
-  const authHeader = req.headers.authorization || "";
-  const [scheme, token] = authHeader.split(" ");
+function getTokenFromRequest(req) {
+  const fromCookie = req.cookies?.token;
+  if (typeof fromCookie === "string" && fromCookie) return fromCookie;
+  return null;
+}
 
-  if (scheme !== "Bearer" || !token) return next(ApiError.unauthorized());
+export function requireAuth(req, _res, next) {
+  const token = getTokenFromRequest(req);
+  if (!token) return next(ApiError.unauthorized());
 
   try {
     const config = getConfig();
@@ -14,10 +18,9 @@ export function requireAuth(req, _res, next) {
     const userId = Number(payload.sub);
     if (!userId) return next(ApiError.unauthorized());
 
-    req.user = { id: userId, email: payload.email || null };
+    req.user = { id: userId, email: payload.email || null, steamId: payload.steamId || null };
     return next();
   } catch (err) {
     return next(err);
   }
 }
-

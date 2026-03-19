@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { apiFetch } from "@/lib/api";
 
 type Props = {
   onCreated: () => Promise<void> | void;
@@ -25,7 +26,7 @@ export function AddFlipForm({ onCreated }: Props) {
           e.preventDefault();
           setLoading(true);
           try {
-            const res = await fetch("/api/flips", {
+            const data = await apiFetch("/api/flips", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -35,9 +36,12 @@ export function AddFlipForm({ onCreated }: Props) {
               })
             });
 
-            const data = await res.json().catch(() => null);
-            if (!res.ok) {
-              throw new Error(data?.message || `Failed (${res.status})`);
+            if (data === null) {
+              toast({
+                title: "Zaloguj się przez Steam",
+                description: "Twoje konto nie jest zalogowane."
+              });
+              return;
             }
 
             setSkin("");

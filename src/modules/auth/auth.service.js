@@ -2,7 +2,12 @@ import bcrypt from "bcrypt";
 import { ApiError } from "../../shared/errors/ApiError.js";
 import { getConfig } from "../../config/env.js";
 import { signJwt } from "../../shared/security/jwt.js";
-import { createUser, findUserByEmail } from "./auth.repository.js";
+import {
+  createUser,
+  findUserByEmail,
+  findUserBySteamId,
+  createSteamUser
+} from "./auth.repository.js";
 
 function isValidEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -62,3 +67,30 @@ export async function loginUser({ email, password }) {
 
   return { token, user: { id: user.id, email: user.email } };
 }
+function isValidSteamId(steamId) {
+  return typeof steamId === "string" && /^[0-9]{17}$/.test(steamId);
+}
+
+export async function steamExchangeUser({ steamId }) {
+  if (!isValidSteamId(steamId)) throw ApiError.badRequest("Invalid steamId");
+
+  let user = await findUserBySteamId(steamId);
+
+  if (!user) {
+    const email = `steam_${steamId}@local`;
+    const passwordHash = "DISABLED_STEAM";
+    user = await createSteamUser({ steamId, email, passwordHash });
+  }
+
+  const config = getConfig();
+  const token = signJwt(
+    { sub: String(user.id), email: user.email, steamId: user.steam_id || steamId },
+    { secret: config.jwt.secret, expiresInSeconds: config.jwt.expiresInSeconds }
+  );
+
+  return {
+    token,
+    user: { id: user.id, email: user.email, steamId: user.steam_id || steamId }
+  };
+}
+

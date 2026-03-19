@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
@@ -31,14 +32,13 @@ export default function RegisterPage() {
             e.preventDefault();
             setLoading(true);
             try {
-              const res = await fetch("/api/auth/register", {
+              const data = await apiFetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
               });
 
-              const data = await res.json().catch(() => null);
-              if (!res.ok) throw new Error(data?.message || `Register failed (${res.status})`);
+              if (!data) throw new Error("Register failed");
 
               toast({ title: "Account created" });
               router.push("/dashboard");

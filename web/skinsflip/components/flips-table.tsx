@@ -89,19 +89,28 @@ export function FlipsTable({ flips }: Props) {
         </thead>
 
         <tbody>
-          {pageItems.map((flip) => (
-            <tr key={flip.id} className="border-t border-zinc-800">
-              <td className="p-2">{flip.skin}</td>
-              <td className="p-2">{formatCurrency(flip.buyPrice)}</td>
-              <td className="p-2">{formatCurrency(flip.sellPrice)}</td>
-              <td className={cn("p-2 font-semibold", flip.profit >= 0 ? "text-accent" : "text-destructive")}>
-                {flip.profit >= 0 ? "+" : ""}{formatCurrency(flip.profit)}
-              </td>
-              <td className="p-2">{flip.roi.toFixed(1)}%</td>
-              <td className="p-2">{formatShortDate(flip.date)}</td>
-            </tr>
-          ))}
-        </tbody>
+  {flips.length === 0 ? (
+    <tr>
+      <td
+        colSpan={6}
+        className="text-center text-muted-foreground py-8"
+      >
+        You haven't added any flips yet.
+      </td>
+    </tr>
+  ) : (
+    flips.map((flip) => (
+      <tr key={flip.id} className="border-t border-zinc-800">
+        <td className="p-2">{flip.skin}</td>
+        <td className="p-2">${flip.buyPrice}</td>
+        <td className="p-2">${flip.sellPrice}</td>
+        <td className="p-2 text-green-400">${flip.profit}</td>
+        <td className="p-2">{flip.roi}%</td>
+        <td className="p-2">{new Date(flip.date).toLocaleDateString()}</td>
+      </tr>
+    ))
+  )}
+</tbody>
       </table>
 
       <div className="mt-4 flex items-center justify-end gap-2">
