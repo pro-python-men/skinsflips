@@ -15,7 +15,7 @@ import { User, Bell, DollarSign, Shield } from "lucide-react"
 
 export default function SettingsPage() {
   return (
-    <DashboardLayout title="Settings">
+    <DashboardLayout title="Settings" requireAuth>
       <div className="max-w-2xl space-y-6">
         {/* Profile Settings */}
         <div className="rounded-xl border border-border bg-card p-6">

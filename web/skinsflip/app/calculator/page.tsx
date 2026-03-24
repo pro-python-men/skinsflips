@@ -14,7 +14,7 @@ function CalculatorContent() {
 
 export default function CalculatorPage() {
   return (
-    <DashboardLayout title="Flip Calculator">
+    <DashboardLayout title="Flip Calculator" requireAuth>
       <Suspense fallback={<div>Loading...</div>}>
         <CalculatorContent />
       </Suspense>

@@ -24,12 +24,12 @@ export default function HistoryPage() {
       try {
         const data = await apiFetch("/api/flips")
 
-      if (!data) {
-        setFlips([])
-        return
-      }
+        if (!data) {
+          setFlips([])
+          return
+        }
 
-      setFlips(Array.isArray(data) ? (data as Flip[]) : [])
+        setFlips(Array.isArray(data) ? (data as Flip[]) : [])
       } catch (e: any) {
         setError(e?.message || "Failed to load history")
       } finally {
@@ -55,7 +55,7 @@ export default function HistoryPage() {
   }, [flips, weapon, profitFilter])
 
   return (
-    <DashboardLayout title="Flip History">
+    <DashboardLayout title="Flip History" requireAuth>
       <div className="space-y-6">
         <HistoryFilters
           dateRange={dateRange}

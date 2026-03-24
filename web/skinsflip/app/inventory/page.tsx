@@ -21,6 +21,9 @@ type InventoryItem = {
 
 export default function InventoryPage() {
   const router = useRouter();
+
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,13 +41,27 @@ export default function InventoryPage() {
     );
   }, [items]);
 
+  // 🔥 AUTH CHECK
+  useEffect(() => {
+    fetch("/api/inventory", { credentials: "include" })
+      .then((res) => {
+        if (res.status === 401) {
+          window.location.href = "/login";
+        } else {
+          setAuthorized(true);
+        }
+      })
+      .catch(() => {
+        window.location.href = "/login";
+      });
+  }, []);
+
   const refresh = async () => {
     setLoading(true);
     setError("");
     try {
       const data = await apiFetch("/api/inventory");
       if (data === null) {
-        console.log("Not logged in - showing empty inventory");
         setItems([]);
         setLoading(false);
         return;
@@ -58,9 +75,20 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    refresh();
+    if (authorized) {
+      refresh();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authorized]);
+
+  // 🔥 LOADING AUTH
+  if (authorized === null) {
+    return (
+      <DashboardLayout title="Inventory">
+        <div className="p-6 text-muted-foreground">Checking auth...</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Inventory">
@@ -94,7 +122,8 @@ export default function InventoryPage() {
                 });
 
                 if (data === null) {
-                  throw new Error("Not authenticated or request failed.");
+                  window.location.href = "/login";
+                  return;
                 }
 
                 setSkin("");
@@ -124,6 +153,7 @@ export default function InventoryPage() {
                 placeholder="AWP | Asiimov"
               />
             </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Purchase price
@@ -135,6 +165,7 @@ export default function InventoryPage() {
                 placeholder="0.00"
               />
             </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Current price
@@ -146,6 +177,7 @@ export default function InventoryPage() {
                 placeholder="0.00"
               />
             </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Quantity
@@ -157,6 +189,7 @@ export default function InventoryPage() {
                 placeholder="1"
               />
             </div>
+
             <div className="md:col-span-4">
               <Button type="submit" disabled={saving} className="w-full md:w-auto">
                 {saving ? "Saving…" : "Add item"}
@@ -165,22 +198,25 @@ export default function InventoryPage() {
           </form>
         </div>
 
-        {error ? (
+        {error && (
           <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
             {error}
           </div>
-        ) : null}
+        )}
 
-        {loading ? (
+        {loading && (
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
             Loading inventory…
           </div>
-        ) : null}
+        )}
 
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="mb-4 text-lg font-semibold text-foreground">Items</h3>
+
           {items.length === 0 && !loading ? (
-            <div className="text-sm text-muted-foreground">No inventory items yet.</div>
+            <div className="text-sm text-muted-foreground">
+              No inventory items yet.
+            </div>
           ) : (
             <div className="w-full overflow-x-auto">
               <table className="w-full text-sm">
@@ -210,10 +246,15 @@ export default function InventoryPage() {
                           size="sm"
                           onClick={async () => {
                             try {
-                              const data = await apiFetch(`/api/inventory/${it.id}`, { method: "DELETE" });
+                              const data = await apiFetch(`/api/inventory/${it.id}`, {
+                                method: "DELETE"
+                              });
+
                               if (data === null) {
-                                throw new Error("Not authenticated or request failed.");
+                                window.location.href = "/login";
+                                return;
                               }
+
                               toast({ title: "Item deleted" });
                               await refresh();
                             } catch (err: any) {
@@ -239,4 +280,3 @@ export default function InventoryPage() {
     </DashboardLayout>
   );
 }
-
