@@ -3,8 +3,15 @@ import { ApiError } from "../errors/ApiError.js";
 import { verifyJwt } from "../security/jwt.js";
 
 function getTokenFromRequest(req) {
+  const authHeader = req.get?.("authorization") || req.headers?.authorization;
+  if (typeof authHeader === "string") {
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (match?.[1]) return match[1].trim();
+  }
+
   const fromCookie = req.cookies?.token;
   if (typeof fromCookie === "string" && fromCookie) return fromCookie;
+
   return null;
 }
 

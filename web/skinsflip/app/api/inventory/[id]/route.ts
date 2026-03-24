@@ -1,11 +1,14 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import { NextResponse } from "next/server";
 import { backendFetch, unauthorized } from "@/lib/backend";
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+{ params }: { params: Promise<{ id: string }> }
+
 ) {
-  const { id } = params;
+const { id } = await params;
 
   const { response, unauthorized: isUnauthorized } = await backendFetch(`/inventory/${id}`, {
     method: "DELETE"

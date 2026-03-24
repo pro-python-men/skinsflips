@@ -20,9 +20,10 @@ export function DashboardLayout({ children, title, requireAuth }: DashboardLayou
     if (requireAuth) {
       const checkAuth = async () => {
         try {
-          const res = await fetch('/api/inventory', { credentials: 'include' })
+          const res = await fetch('/api/auth/me', { credentials: 'include' })
           if (res.status === 401) {
-            window.location.href = '/login'
+            const next = `${window.location.pathname}${window.location.search}`
+            window.location.href = `/login?next=${encodeURIComponent(next)}`
             return
           }
           if (res.ok) {

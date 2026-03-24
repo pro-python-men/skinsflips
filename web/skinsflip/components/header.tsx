@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, LogOut, User, Settings } from "lucide-react"
+import { Menu, LogOut, User as UserIcon, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -10,7 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { apiFetch } from "@/lib/api"
+
+type AuthUser = {
+  id: number
+  email?: string | null
+  steamId?: string | null
+}
 
 interface HeaderProps {
   title: string
@@ -19,7 +26,31 @@ interface HeaderProps {
 }
 
 export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true)
+      try {
+        const data = await apiFetch("/api/auth/me")
+        setUser((data as any)?.user ?? null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    run()
+  }, [])
+
+  const logout = async () => {
+    try {
+      await apiFetch("/api/auth/logout", { method: "POST" })
+    } finally {
+      setUser(null)
+      window.location.href = "/dashboard"
+    }
+  }
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
@@ -37,19 +68,15 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
       </div>
 
-      {user === null ? (
+      {loading ? null : user === null ? (
         <Button asChild>
           <a
-  href="/api/auth/steam"
-  className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm transition"
->
-  <img
-    src="/favicon.ico"
-    alt="Steam"
-    className="w-4 h-4"
-  />
-  Login with Steam
-</a>
+            href="/api/auth/steam"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm transition"
+          >
+            <img src="/favicon.ico" alt="Steam" className="w-4 h-4" />
+            Login with Steam
+          </a>
         </Button>
       ) : (
         <DropdownMenu>
@@ -58,17 +85,17 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="/placeholder-avatar.png" alt="User avatar" />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  
+                  {user.email?.[0]?.toUpperCase() ?? "U"}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium text-foreground sm:inline">
-                
+                {user.email ?? user.steamId ?? "User"}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
+              <UserIcon className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
             <DropdownMenuItem>
@@ -76,7 +103,13 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onSelect={(e) => {
+                e.preventDefault()
+                logout()
+              }}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Logout
             </DropdownMenuItem>

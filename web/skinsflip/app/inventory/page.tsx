@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 
@@ -20,9 +19,7 @@ type InventoryItem = {
 };
 
 export default function InventoryPage() {
-  const router = useRouter();
 
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,19 +39,7 @@ export default function InventoryPage() {
   }, [items]);
 
   // 🔥 AUTH CHECK
-  useEffect(() => {
-    fetch("/api/inventory", { credentials: "include" })
-      .then((res) => {
-        if (res.status === 401) {
-          window.location.href = "/login";
-        } else {
-          setAuthorized(true);
-        }
-      })
-      .catch(() => {
-        window.location.href = "/login";
-      });
-  }, []);
+
 
   const refresh = async () => {
     setLoading(true);
@@ -75,23 +60,13 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    if (authorized) {
-      refresh();
-    }
+    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authorized]);
+  }, []);
 
   // 🔥 LOADING AUTH
-  if (authorized === null) {
-    return (
-      <DashboardLayout title="Inventory">
-        <div className="p-6 text-muted-foreground">Checking auth...</div>
-      </DashboardLayout>
-    );
-  }
-
   return (
-    <DashboardLayout title="Inventory">
+    <DashboardLayout title="Inventory" requireAuth>
       <div className="space-y-6">
         <div className="flex items-baseline justify-between gap-4">
           <div className="text-sm text-muted-foreground">
@@ -122,10 +97,13 @@ export default function InventoryPage() {
                 });
 
                 if (data === null) {
-                  window.location.href = "/login";
+                  toast({
+                    title: "Zaloguj się",
+                    description: "Sesja wygasła lub nie jesteś zalogowany.",
+                    variant: "destructive"
+                  });
                   return;
                 }
-
                 setSkin("");
                 setPurchasePrice("");
                 setCurrentPrice("");
@@ -251,10 +229,13 @@ export default function InventoryPage() {
                               });
 
                               if (data === null) {
-                                window.location.href = "/login";
+                                toast({
+                                  title: "Zaloguj się",
+                                  description: "Sesja wygasła lub nie jesteś zalogowany.",
+                                  variant: "destructive"
+                                });
                                 return;
                               }
-
                               toast({ title: "Item deleted" });
                               await refresh();
                             } catch (err: any) {

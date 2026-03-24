@@ -2,20 +2,38 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get("next") || "/dashboard"
-
+  const error = searchParams.get("error")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    if (!error) return
+
+    if (error === "steam_auth_failed") {
+      toast({
+        title: "Steam login failed",
+        description: "Spróbuj ponownie za chwilę.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    toast({
+      title: "Login error",
+      description: String(error),
+      variant: "destructive",
+    })
+  }, [error])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -31,8 +49,15 @@ export default function LoginPage() {
             Track your skin flips and maximize your ROI
           </p>
         </div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-card p-3 text-sm text-destructive">
+            {error === "steam_auth_failed"
+              ? "Steam login failed. Sprobuj ponownie."
+              : `Login error: ${error}`}
+          </div>
+        ) : null}
         <a
-          href="/api/auth/steam"
+          href={`/api/auth/steam?next=${encodeURIComponent(nextPath)}`}
           className="w-full flex items-center justify-center gap-3 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-white py-2 px-4"
         >
           <img

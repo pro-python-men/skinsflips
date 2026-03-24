@@ -13,7 +13,9 @@ const router = Router();
 
 router.post("/auth/register", register);
 router.post("/auth/login", login);
-
+router.get("/auth/me", requireAuth, (req, res) => {
+  res.status(200).json({ user: req.user });
+});
 router.get("/health", (req, res) => {
   res.json({
     status: "ok",
