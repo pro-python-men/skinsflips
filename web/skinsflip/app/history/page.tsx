@@ -6,7 +6,9 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { FlipsTable, Flip } from "@/components/flips-table"
 import { HistoryFilters } from "@/components/history-filters"
 import { EmptyState } from "@/components/empty-state"
-import { History } from "lucide-react"
+import { StatCard } from "@/components/stat-card"
+import { formatCurrency, formatPercent } from "@/lib/format"
+import { DollarSign, History, RefreshCcw, TrendingUp } from "lucide-react"
 
 export default function HistoryPage() {
   const [dateRange, setDateRange] = useState("All Time")
@@ -15,6 +17,11 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [flips, setFlips] = useState<Flip[]>([])
+  const [stats, setStats] = useState({
+    totalProfit: 0,
+    averageROI: 0,
+    totalFlips: 0,
+  })
 
   useEffect(() => {
     const run = async () => {
@@ -22,14 +29,24 @@ export default function HistoryPage() {
       setError("")
 
       try {
-        const data = await apiFetch("/api/flips")
+        const [statsData, flipsData] = await Promise.all([
+          apiFetch("/api/stats"),
+          apiFetch("/api/flips"),
+        ])
 
-        if (!data) {
+        if (statsData === null && flipsData === null) {
+          setStats({ totalProfit: 0, averageROI: 0, totalFlips: 0 })
           setFlips([])
           return
         }
 
-        setFlips(Array.isArray(data) ? (data as Flip[]) : [])
+        setStats({
+          totalProfit: Number((statsData as any)?.totalProfit ?? 0),
+          averageROI: Number((statsData as any)?.averageROI ?? 0),
+          totalFlips: Number((statsData as any)?.totalFlips ?? 0),
+        })
+
+        setFlips(Array.isArray(flipsData) ? (flipsData as Flip[]) : [])
       } catch (e: any) {
         setError(e?.message || "Failed to load history")
       } finally {
@@ -57,6 +74,30 @@ export default function HistoryPage() {
   return (
     <DashboardLayout title="Flip History" requireAuth>
       <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard
+            title="Total Profit"
+            value={formatCurrency(stats.totalProfit)}
+            description="All time"
+            icon={DollarSign}
+            trend={stats.totalProfit >= 0 ? "up" : "down"}
+          />
+          <StatCard
+            title="Average ROI"
+            value={formatPercent(stats.averageROI, 1)}
+            description="All time"
+            icon={TrendingUp}
+            trend={stats.averageROI >= 0 ? "up" : "down"}
+          />
+          <StatCard
+            title="Total Flips"
+            value={stats.totalFlips.toString()}
+            description="All time"
+            icon={RefreshCcw}
+            trend="neutral"
+          />
+        </div>
+
         <HistoryFilters
           dateRange={dateRange}
           weapon={weapon}

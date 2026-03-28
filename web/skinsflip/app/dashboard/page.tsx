@@ -138,7 +138,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-300">
                 Find the most profitable flips and maximize your ROI
               </p>
-              <Link href="/bestflips">
+              <Link href="/best-flips">
                 <button className="bg-green-500 hover:bg-green-400 transition-all duration-200 text-black font-semibold px-6 py-2 rounded-lg">
                   Find Best Flips
                 </button>

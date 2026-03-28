@@ -44,3 +44,29 @@ export const createFlip = asyncHandler(async (req, res) => {
     createdAt: flip.created_at
   });
 });
+export const getBestFlips = asyncHandler(async (req, res) => {
+  const items = [
+    { skin: "AK-47 | Redline (FT)", buyPrice: 42.5, sellPrice: 49.9, source: "buff163" },
+    { skin: "AWP | Asiimov (BS)", buyPrice: 78.0, sellPrice: 88.0, source: "steam" },
+    { skin: "M4A1-S | Printstream (FT)", buyPrice: 120.0, sellPrice: 134.5, source: "skinport" }
+  ];
+
+  const normalized = items.map((it, idx) => {
+    const buyPrice = Number(it.buyPrice);
+    const sellPrice = Number(it.sellPrice);
+    const profit = sellPrice - buyPrice;
+    const roi = buyPrice > 0 ? (profit / buyPrice) * 100 : 0;
+
+    return {
+      id: String(idx + 1),
+      skin: String(it.skin),
+      buyPrice,
+      sellPrice,
+      profit,
+      roi,
+      source: String(it.source)
+    };
+  });
+
+  res.json(normalized);
+});

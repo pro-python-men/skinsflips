@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { register, login, steamExchange } from "../modules/auth/auth.controller.js";
+import { getFlips, createFlip, getBestFlips } from "../modules/flips/flips.controller.js";
 import { getUsers } from "../modules/users/user.controller.js";
-import { getFlips, createFlip } from "../modules/flips/flips.controller.js";
 import { getStats } from "../modules/stats/stats.controller.js";
 import {
   getInventory,
@@ -24,7 +24,7 @@ router.get("/health", (req, res) => {
 });
 
 router.use(["/flips", "/stats", "/inventory", "/users"], requireAuth);
-
+router.get("/flips/best", getBestFlips);
 router.get("/flips", getFlips);
 router.post("/flips", createFlip);
 router.post("/auth/steam/exchange", steamExchange);

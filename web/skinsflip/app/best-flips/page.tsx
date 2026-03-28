@@ -14,6 +14,7 @@ type Flip = {
   sellPrice: number
   profit: number
   roi: number
+  source: string
 }
 
 export default function BestFlipsPage() {
@@ -49,6 +50,7 @@ export default function BestFlipsPage() {
           sellPrice: Number(flip.sellPrice),
           profit: Number(flip.profit),
           roi: Number(flip.roi),
+          source: String(flip.source ?? ""),
         }))
       )
     } catch (e: any) {
@@ -96,6 +98,7 @@ export default function BestFlipsPage() {
                     <th className="text-right p-2">Sprzedaż</th>
                     <th className="text-right p-2">Zysk</th>
                     <th className="text-right p-2">ROI</th>
+                    <th className="text-left p-2">Source</th>
                     <th className="text-right p-2">Akcja</th>
                   </tr>
                 </thead>
@@ -115,9 +118,12 @@ export default function BestFlipsPage() {
                           {formatPercent(flip.roi, 1)}
                         </span>
                       </td>
+                      <td className="p-2">{flip.source || "-"}</td>
                       <td className="p-2 text-right">
-                        <Button variant="secondary" size="sm">
-                          Buy
+                        <Button asChild variant="secondary" size="sm">
+                          <a href="#" onClick={(e) => e.preventDefault()} title="Affiliate wkrótce">
+                            Buy
+                          </a>
                         </Button>
                       </td>
                     </tr>

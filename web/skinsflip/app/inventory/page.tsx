@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 
 type InventoryItem = {
   id: string;
@@ -31,11 +31,58 @@ export default function InventoryPage() {
   const [quantity, setQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
 
-  const totalValue = useMemo(() => {
-    return items.reduce(
-      (sum, it) => sum + Number(it.currentPrice) * Number(it.quantity),
-      0
-    );
+  type InventoryRow = InventoryItem & {
+    cost: number;
+    value: number;
+    profit: number;
+    roi: number;
+  };
+
+  const computed = useMemo(() => {
+    const rows: InventoryRow[] = items.map((it) => {
+      const quantity = Number(it.quantity) || 0;
+      const purchasePrice = Number(it.purchasePrice) || 0;
+      const currentPrice = Number(it.currentPrice) || 0;
+
+      const cost = purchasePrice * quantity;
+      const value = currentPrice * quantity;
+      const profit = value - cost;
+      const roi = cost > 0 ? (profit / cost) * 100 : 0;
+
+      return { ...it, cost, value, profit, roi };
+    });
+
+    const totalCost = rows.reduce((sum, r) => sum + r.cost, 0);
+    const totalValue = rows.reduce((sum, r) => sum + r.value, 0);
+    const totalProfit = totalValue - totalCost;
+    const totalRoi = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+
+    const winners = rows.filter((r) => r.profit > 0).length;
+    const losers = rows.filter((r) => r.profit < 0).length;
+
+    const best = rows.reduce<InventoryRow | null>((acc, r) => {
+      if (!acc) return r;
+      return r.profit > acc.profit ? r : acc;
+    }, null);
+
+    const worst = rows.reduce<InventoryRow | null>((acc, r) => {
+      if (!acc) return r;
+      return r.profit < acc.profit ? r : acc;
+    }, null);
+
+    return {
+      rows,
+      totals: {
+        totalCost,
+        totalValue,
+        totalProfit,
+        totalRoi,
+        winners,
+        losers,
+        best,
+        worst
+      }
+    };
   }, [items]);
 
   // 🔥 AUTH CHECK
@@ -68,12 +115,50 @@ export default function InventoryPage() {
   return (
     <DashboardLayout title="Inventory" requireAuth>
       <div className="space-y-6">
-        <div className="flex items-baseline justify-between gap-4">
-          <div className="text-sm text-muted-foreground">
-            Inventory value:{" "}
-            <span className="text-foreground font-semibold">
-              {formatCurrency(totalValue)}
-            </span>
+        <div className="space-y-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Inventory value:{" "}
+              <span className="text-foreground font-semibold">
+                {formatCurrency(computed.totals.totalValue)}
+              </span>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              Cost basis:{" "}
+              <span className="text-foreground font-semibold">
+                {formatCurrency(computed.totals.totalCost)}
+              </span>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              P/L:{" "}
+              <span
+                className={`font-semibold ${
+                  computed.totals.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {formatCurrency(computed.totals.totalProfit)}
+              </span>{" "}
+              <span className="text-muted-foreground">
+                ({formatPercent(computed.totals.totalRoi, 1)})
+              </span>
+            </div>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            On profit: <span className="text-foreground font-medium">{computed.totals.winners}</span>{" "}
+            • On loss: <span className="text-foreground font-medium">{computed.totals.losers}</span>
+            {computed.totals.best ? (
+              <>
+                {" "}
+                • Best:{" "}
+                <span className="text-foreground font-medium">
+                  {computed.totals.best.skin}
+                </span>{" "}
+                (<span className="text-emerald-400">{formatCurrency(computed.totals.best.profit)}</span>)
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -191,7 +276,7 @@ export default function InventoryPage() {
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="mb-4 text-lg font-semibold text-foreground">Items</h3>
 
-          {items.length === 0 && !loading ? (
+          {computed.rows.length === 0 && !loading ? (
             <div className="text-sm text-muted-foreground">
               No inventory items yet.
             </div>
@@ -205,18 +290,36 @@ export default function InventoryPage() {
                     <th className="text-right p-2">Current</th>
                     <th className="text-right p-2">Qty</th>
                     <th className="text-right p-2">Value</th>
+                    <th className="text-right p-2">P/L</th>
+                    <th className="text-right p-2">ROI</th>
                     <th className="text-right p-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((it) => (
+                  {computed.rows.map((it) => (
                     <tr key={it.id} className="border-t border-zinc-800">
                       <td className="p-2">{it.skin}</td>
                       <td className="p-2 text-right">{formatCurrency(it.purchasePrice)}</td>
                       <td className="p-2 text-right">{formatCurrency(it.currentPrice)}</td>
                       <td className="p-2 text-right">{it.quantity}</td>
                       <td className="p-2 text-right font-semibold">
-                        {formatCurrency(Number(it.currentPrice) * Number(it.quantity))}
+                        {formatCurrency(it.value)}
+                      </td>
+                      <td
+                        className={`p-2 text-right font-semibold ${
+                          it.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {formatCurrency(it.profit)}
+                      </td>
+                      <td className="p-2 text-right">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                            it.roi >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {formatPercent(it.roi, 1)}
+                        </span>
                       </td>
                       <td className="p-2 text-right">
                         <Button

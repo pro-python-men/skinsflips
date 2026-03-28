@@ -24,7 +24,7 @@ interface SidebarProps {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/bestflips", label: "Best Flips", icon: TrendingUp },
+  { href: "/best-flips", label: "Best Flips", icon: TrendingUp },
   { href: "/calculator", label: "Flip Calculator", icon: Calculator },
   { href: "/history", label: "Flip History", icon: History },
   { href: "/settings", label: "Settings", icon: Settings },
