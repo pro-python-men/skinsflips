@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { apiFetch } from "@/lib/api"
 import { ProfitChart } from "@/components/profit-chart"
 import { useEffect, useState } from "react"
@@ -10,6 +11,7 @@ import { FlipsTable, Flip } from "@/components/flips-table"
 import { DollarSign, TrendingUp, RefreshCcw, Package } from "lucide-react"
 import { AddFlipForm } from "@/components/add-flip-form"
 import { formatCurrency, formatPercent } from "@/lib/format"
+import Link from "next/link"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -116,6 +118,34 @@ export default function DashboardPage() {
   return (
     <DashboardLayout title="Dashboard">
       <div className="space-y-6">
+
+        {/* Hero Banner Section */}
+        <div className="relative rounded-xl overflow-hidden border border-border bg-card">
+          <Image
+            src="/banner.png"
+            alt="Turn CS2 skins into profit instantly"
+            width={1920}
+            height={500}
+            className="w-full h-[220px] object-cover"
+          />
+          
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent flex items-center">
+            <div className="px-10 max-w-xl space-y-3">
+              <h1 className="text-3xl font-bold text-white">
+                Turn CS2 skins into <span className="text-green-400">profit</span> instantly
+              </h1>
+              <p className="text-sm text-gray-300">
+                Find the most profitable flips and maximize your ROI
+              </p>
+              <Link href="/bestflips">
+                <button className="bg-green-500 hover:bg-green-400 transition-all duration-200 text-black font-semibold px-6 py-2 rounded-lg">
+                  Find Best Flips
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
 
         <div className="flex gap-2">
           <button onClick={() => setTimeFilter("7d")} className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-sm">
