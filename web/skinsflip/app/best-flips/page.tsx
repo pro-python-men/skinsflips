@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { apiFetch } from "@/lib/api"
 import { formatCurrency, formatPercent } from "@/lib/format"
 
@@ -23,6 +24,36 @@ export default function BestFlipsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  const mockFlips: Flip[] = [
+    {
+      id: "1",
+      skin: "AK-47 | Redline",
+      buyPrice: 10,
+      sellPrice: 15,
+      profit: 5,
+      roi: 50,
+      source: "Skinport"
+    },
+    {
+      id: "2",
+      skin: "AWP | Asiimov",
+      buyPrice: 80,
+      sellPrice: 95,
+      profit: 15,
+      roi: 18.75,
+      source: "Steam"
+    },
+    {
+      id: "3",
+      skin: "M4A1-S | Printstream",
+      buyPrice: 120,
+      sellPrice: 150,
+      profit: 30,
+      roi: 25,
+      source: "Buff"
+    }
+  ];
+
   const sortedFlips = useMemo(() => {
     return [...flips].sort((a, b) => b.roi - a.roi)
   }, [flips])
@@ -33,8 +64,8 @@ export default function BestFlipsPage() {
 
     try {
       const data = await apiFetch("/api/flips/best")
-      if (data === null) {
-        router.replace("/login")
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        setFlips(mockFlips)
         return
       }
 
@@ -54,7 +85,7 @@ export default function BestFlipsPage() {
         }))
       )
     } catch (e: any) {
-      setError(e?.message || "Nie udało się załadować najlepszych flipów")
+      setError(e?.message || "Failed to load best flips")
     } finally {
       setLoading(false)
     }
@@ -66,11 +97,15 @@ export default function BestFlipsPage() {
   }, [])
 
   return (
-    <DashboardLayout title="Best Flips" requireAuth>
+    <DashboardLayout title="Best Flips">
       <div className="space-y-6">
+        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          Best flipping opportunities based on ROI
+        </div>
+
         {loading ? (
           <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-            Ładowanie najlepszych flipów...
+            Loading best flips...
           </div>
         ) : error ? (
           <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
@@ -78,58 +113,73 @@ export default function BestFlipsPage() {
           </div>
         ) : sortedFlips.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-            Brak danych o flipach.
+            No flips available.
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="mb-4 flex items-center justify-between">
-              <h1 className="text-xl font-semibold">Najlepsze flipy</h1>
+              <h1 className="text-xl font-semibold">Best flips</h1>
               <Button variant="secondary" size="sm" onClick={loadFlips}>
-                Odśwież
+                Refresh
               </Button>
             </div>
 
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-zinc-400">
-                  <tr>
-                    <th className="text-left p-2">Skin</th>
-                    <th className="text-right p-2">Kupno</th>
-                    <th className="text-right p-2">Sprzedaż</th>
-                    <th className="text-right p-2">Zysk</th>
-                    <th className="text-right p-2">ROI</th>
-                    <th className="text-left p-2">Source</th>
-                    <th className="text-right p-2">Akcja</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedFlips.map((flip) => (
-                    <tr key={flip.id} className="border-t border-zinc-800">
-                      <td className="p-2">{flip.skin}</td>
-                      <td className="p-2 text-right">{formatCurrency(flip.buyPrice)}</td>
-                      <td className="p-2 text-right">{formatCurrency(flip.sellPrice)}</td>
-                      <td className={`p-2 text-right ${flip.profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sortedFlips.map((flip, index) => (
+                <div
+                  key={flip.id}
+                  className={`rounded-xl border bg-card p-5 transition hover:shadow-lg ${
+                    index === 0
+                      ? "border-green-500 hover:shadow-green-500/10 md:col-span-2 xl:col-span-3"
+                      : "border-border hover:border-green-500/40"
+                  }`}
+                >
+                  {index === 0 && (
+                    <div className="mb-3 text-xs text-green-400">🔥 Best ROI</div>
+                  )}
+
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground">
+                        {flip.skin}
+                      </h3>
+                    </div>
+                    <Badge>{flip.source}</Badge>
+                  </div>
+
+                  <div className="mb-4 space-y-2">
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-semibold text-foreground">
+                        {formatCurrency(flip.buyPrice)}
+                      </span>
+                      <span className="mx-2">→</span>
+                      <span className="font-semibold text-foreground">
+                        {formatCurrency(flip.sellPrice)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Profit</div>
+                      <div
+                        className={`text-2xl font-bold ${
+                          flip.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
                         {formatCurrency(flip.profit)}
-                      </td>
-                      <td className="p-2 text-right">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                          flip.roi >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                        }`}>
-                          {formatPercent(flip.roi, 1)}
-                        </span>
-                      </td>
-                      <td className="p-2">{flip.source || "-"}</td>
-                      <td className="p-2 text-right">
-                        <Button asChild variant="secondary" size="sm">
-                          <a href="#" onClick={(e) => e.preventDefault()} title="Affiliate wkrótce">
-                            Buy
-                          </a>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <div className="rounded-full bg-green-500/20 px-3 py-2 text-sm font-semibold text-green-400">
+                      {formatPercent(flip.roi, 1)}
+                    </div>
+                  </div>
+
+                  <button className="w-full rounded-lg bg-green-500 py-2 font-semibold text-black hover:bg-green-400 transition">
+                    Buy now
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}

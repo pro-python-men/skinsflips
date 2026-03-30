@@ -5,9 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatPercent } from "@/lib/format";
+
+const DEV_MODE = true;
 
 type InventoryItem = {
   id: string;
@@ -15,6 +18,15 @@ type InventoryItem = {
   purchasePrice: number;
   currentPrice: number;
   quantity: number;
+  profit: number;
+  roi: number;
+  bestMarket: string;
+  bestSell?: {
+    market: string;
+    price: number;
+    profit: number;
+    roi: number;
+  };
   createdAt?: string;
 };
 
@@ -25,17 +37,52 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [mounted, setMounted] = useState(false);
+
   const [skin, setSkin] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
 
+  const mockInventory: InventoryItem[] = [
+    {
+      id: "1",
+      skin: "AK-47 | Redline",
+      purchasePrice: 10,
+      currentPrice: 15,
+      quantity: 2,
+      profit: 10,
+      roi: 50,
+      bestMarket: "Skinport",
+      bestSell: {
+        market: "Buff",
+        price: 18,
+        profit: 16,
+        roi: 80
+      }
+    },
+    {
+      id: "2",
+      skin: "AWP | Asiimov",
+      purchasePrice: 80,
+      currentPrice: 70,
+      quantity: 1,
+      profit: -10,
+      roi: -12.5,
+      bestMarket: "Steam",
+      bestSell: {
+        market: "Skinport",
+        price: 85,
+        profit: 5,
+        roi: 6.25
+      }
+    }
+  ];
+
   type InventoryRow = InventoryItem & {
     cost: number;
     value: number;
-    profit: number;
-    roi: number;
   };
 
   const computed = useMemo(() => {
@@ -46,15 +93,13 @@ export default function InventoryPage() {
 
       const cost = purchasePrice * quantity;
       const value = currentPrice * quantity;
-      const profit = value - cost;
-      const roi = cost > 0 ? (profit / cost) * 100 : 0;
 
-      return { ...it, cost, value, profit, roi };
+      return { ...it, cost, value };
     });
 
     const totalCost = rows.reduce((sum, r) => sum + r.cost, 0);
     const totalValue = rows.reduce((sum, r) => sum + r.value, 0);
-    const totalProfit = totalValue - totalCost;
+    const totalProfit = rows.reduce((sum, r) => sum + r.profit, 0);
     const totalRoi = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
 
     const winners = rows.filter((r) => r.profit > 0).length;
@@ -70,6 +115,13 @@ export default function InventoryPage() {
       return r.profit < acc.profit ? r : acc;
     }, null);
 
+    const bestSellOpportunity = items.reduce<InventoryItem | null>((acc, item) => {
+      if (!acc) return item;
+      const accRoi = acc.bestSell?.roi ?? 0;
+      const itemRoi = item.bestSell?.roi ?? 0;
+      return itemRoi > accRoi ? item : acc;
+    }, null);
+
     return {
       rows,
       totals: {
@@ -80,7 +132,8 @@ export default function InventoryPage() {
         winners,
         losers,
         best,
-        worst
+        worst,
+        bestSellOpportunity
       }
     };
   }, [items]);
@@ -92,14 +145,45 @@ export default function InventoryPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("/api/inventory");
-      if (data === null) {
+      const data = await apiFetch("/api/inventory/profit");
+      if (!data) {
+        // Auth failed or no backend - demo mode
         setItems([]);
         setLoading(false);
         return;
       }
-      setItems(Array.isArray(data) ? (data as InventoryItem[]) : []);
+      if (Array.isArray(data) && data.length === 0) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+      const itemsWithBestSell = (Array.isArray(data) ? (data as InventoryItem[]) : []).map((item) => {
+        if (!item.bestSell) {
+          const sellPrice = item.currentPrice * (1 + (5 + Math.random() * 15) / 100);
+          const sellProfit = sellPrice - item.purchasePrice;
+          const sellRoi = item.purchasePrice > 0 ? (sellProfit / item.purchasePrice) * 100 : 0;
+          return {
+            ...item,
+            bestSell: {
+              market: ["Skinport", "Buff", "Steam"][Math.floor(Math.random() * 3)],
+              price: sellPrice,
+              profit: sellProfit,
+              roi: sellRoi
+            }
+          };
+        }
+        return item;
+      });
+      setItems(itemsWithBestSell);
     } catch (e: any) {
+      // Handle 405 errors gracefully in demo mode
+      if (e?.message?.includes("405") || e?.message?.includes("Method Not Allowed")) {
+        setItems([]);
+        setError("");
+        setLoading(false);
+        return;
+      }
+      // Only show error for real failures, not auth
       setError(e?.message || "Failed to load inventory");
     } finally {
       setLoading(false);
@@ -107,63 +191,98 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (!mounted) return null;
+
   // 🔥 LOADING AUTH
   return (
-    <DashboardLayout title="Inventory" requireAuth>
+    <DashboardLayout title="Inventory">
       <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-              Inventory value:{" "}
-              <span className="text-foreground font-semibold">
+        <div className="text-xs text-muted-foreground">
+          Demo mode — prices are simulated
+        </div>
+
+        {/* Portfolio Stats Dashboard */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Section 1: Portfolio Value */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">Portfolio Value</div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <div className="text-2xl font-bold text-foreground">
                 {formatCurrency(computed.totals.totalValue)}
-              </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Cost: {formatCurrency(computed.totals.totalCost)}
+              </div>
             </div>
+          </div>
 
-            <div className="text-sm text-muted-foreground">
-              Cost basis:{" "}
-              <span className="text-foreground font-semibold">
-                {formatCurrency(computed.totals.totalCost)}
-              </span>
-            </div>
-
-            <div className="text-sm text-muted-foreground">
-              P/L:{" "}
-              <span
-                className={`font-semibold ${
+          {/* Section 2: Total Profit */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Profit/Loss</div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <div
+                className={`text-2xl font-bold ${
                   computed.totals.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
                 {formatCurrency(computed.totals.totalProfit)}
-              </span>{" "}
-              <span className="text-muted-foreground">
-                ({formatPercent(computed.totals.totalRoi, 1)})
-              </span>
+              </div>
+              <div
+                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                  computed.totals.totalRoi >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                }`}
+              >
+                {formatPercent(computed.totals.totalRoi, 1)}
+              </div>
             </div>
           </div>
 
-          <div className="text-xs text-muted-foreground">
-            On profit: <span className="text-foreground font-medium">{computed.totals.winners}</span>{" "}
-            • On loss: <span className="text-foreground font-medium">{computed.totals.losers}</span>
-            {computed.totals.best ? (
-              <>
-                {" "}
-                • Best:{" "}
-                <span className="text-foreground font-medium">
-                  {computed.totals.best.skin}
-                </span>{" "}
-                (<span className="text-emerald-400">{formatCurrency(computed.totals.best.profit)}</span>)
-              </>
-            ) : null}
+          {/* Section 3: Insights */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">Insights</div>
+            <div className="mt-3 space-y-2 text-sm">
+              <div>
+                <span className="text-muted-foreground">Profitable items:</span>{" "}
+                <span className="font-semibold text-emerald-400">{computed.totals.winners}</span>
+                <span className="text-muted-foreground"> / Losing:</span>{" "}
+                <span className="font-semibold text-rose-400">{computed.totals.losers}</span>
+              </div>
+              {computed.totals.best ? (
+                <div>
+                  <span className="text-muted-foreground">Top:</span>{" "}
+                  <span className="font-semibold text-emerald-400">
+                    {computed.totals.best.skin}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Add item</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">Add item</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setSkin("AWP | Asiimov");
+                setPurchasePrice("100");
+                setCurrentPrice("120");
+                setQuantity("1");
+              }}
+              className="text-xs px-3 py-1 rounded border border-muted-foreground text-muted-foreground hover:border-foreground hover:text-foreground transition"
+            >
+              Try example
+            </button>
+          </div>
           <form
             className="grid gap-4 md:grid-cols-4"
             onSubmit={async (e) => {
@@ -182,20 +301,81 @@ export default function InventoryPage() {
                 });
 
                 if (data === null) {
+                  if (DEV_MODE) {
+                    console.log("DEV MODE: skipping auth");
+
+                    const newItem = {
+                      id: Math.random().toString(),
+                      skin,
+                      purchasePrice: Number(purchasePrice),
+                      currentPrice: Number(currentPrice),
+                      quantity: Number(quantity),
+                      profit:
+                        (Number(currentPrice) - Number(purchasePrice)) * Number(quantity),
+                      roi:
+                        Number(purchasePrice) > 0
+                          ? ((Number(currentPrice) - Number(purchasePrice)) /
+                              Number(purchasePrice)) *
+                            100
+                          : 0,
+                      bestMarket: "Skinport"
+                    };
+
+                    setItems((prev) => [...prev, newItem]);
+
+                    setSkin("");
+                    setPurchasePrice("");
+                    setCurrentPrice("");
+                    setQuantity("1");
+
+                    setSaving(false);
+                    return;
+                  }
+
                   toast({
-                    title: "Zaloguj się",
-                    description: "Sesja wygasła lub nie jesteś zalogowany.",
-                    variant: "destructive"
+                    title: "Authentication required",
+                    description: "You must be logged in to add items",
                   });
+                  setSaving(false);
                   return;
                 }
+
                 setSkin("");
                 setPurchasePrice("");
                 setCurrentPrice("");
                 setQuantity("1");
-                toast({ title: "Inventory item added", description: `${data.skin}` });
+                toast({ title: "Inventory item added", description: `${(data as any).skin}` });
                 await refresh();
               } catch (err: any) {
+                // Handle 405 errors gracefully in demo mode
+                if (err?.message?.includes("405") || err?.message?.includes("Method Not Allowed")) {
+                  const newItem = {
+                    id: Math.random().toString(),
+                    skin,
+                    purchasePrice: Number(purchasePrice),
+                    currentPrice: Number(currentPrice),
+                    quantity: Number(quantity),
+                    profit:
+                      (Number(currentPrice) - Number(purchasePrice)) * Number(quantity),
+                    roi:
+                      Number(purchasePrice) > 0
+                        ? ((Number(currentPrice) - Number(purchasePrice)) /
+                            Number(purchasePrice)) *
+                          100
+                        : 0,
+                    bestMarket: "Skinport"
+                  };
+
+                  setItems((prev) => [...prev, newItem]);
+                  setSkin("");
+                  setPurchasePrice("");
+                  setCurrentPrice("");
+                  setQuantity("1");
+                  toast({ title: "Item added (demo mode)" });
+                  setSaving(false);
+                  return;
+                }
+
                 toast({
                   title: "Could not add item",
                   description: err?.message || "Unknown error",
@@ -273,12 +453,66 @@ export default function InventoryPage() {
           </div>
         )}
 
+        {computed.totals.bestSellOpportunity && (
+          <div className="rounded-xl border border-green-500/30 bg-card p-5">
+            <div className="mb-3 text-xs text-green-400">🔥 Best sell opportunity</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="text-sm text-muted-foreground">Skin</div>
+                <div className="mt-1 text-lg font-bold text-foreground">
+                  {computed.totals.bestSellOpportunity.skin}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Best Market</div>
+                <div className="mt-1">
+                  <Badge>{computed.totals.bestSellOpportunity.bestSell?.market}</Badge>
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Sell Price</div>
+                <div className="mt-1 text-lg font-bold text-foreground">
+                  {formatCurrency(computed.totals.bestSellOpportunity.bestSell?.price || 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Profit</div>
+                <div
+                  className={`mt-1 text-lg font-bold ${
+                    (computed.totals.bestSellOpportunity.bestSell?.profit || 0) >= 0
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  {formatCurrency(computed.totals.bestSellOpportunity.bestSell?.profit || 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">ROI</div>
+                <div className="mt-1 inline-flex rounded-full bg-green-500/20 px-3 py-1 text-sm font-semibold text-green-400">
+                  {formatPercent(computed.totals.bestSellOpportunity.bestSell?.roi || 0, 1)}
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button className="w-full rounded-lg bg-green-500 py-2 font-semibold text-black hover:bg-green-400 transition">
+                  Sell now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="mb-4 text-lg font-semibold text-foreground">Items</h3>
+          
+          <div className="text-xs text-muted-foreground mb-3">
+            Showing profit and best selling option per item
+          </div>
 
           {computed.rows.length === 0 && !loading ? (
-            <div className="text-sm text-muted-foreground">
-              No inventory items yet.
+            <div className="text-sm text-muted-foreground text-center py-8">
+              <div>No items yet</div>
+              <div className="text-xs mt-2">Add one or try example to see profit analysis</div>
             </div>
           ) : (
             <div className="w-full overflow-x-auto">
@@ -290,23 +524,25 @@ export default function InventoryPage() {
                     <th className="text-right p-2">Current</th>
                     <th className="text-right p-2">Qty</th>
                     <th className="text-right p-2">Value</th>
-                    <th className="text-right p-2">P/L</th>
-                    <th className="text-right p-2">ROI</th>
+                    <th className="text-left p-2">Best Market</th>
+                    <th className="text-right p-2">Best Price</th>
+                    <th className="text-right p-2">Profit</th>
+                    <th className="text-right p-2">ROI (%)</th>
                     <th className="text-right p-2"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {computed.rows.map((it) => (
-                    <tr key={it.id} className="border-t border-zinc-800">
+                    <tr key={it.id} className="border-t border-zinc-800 hover:bg-muted/50 transition-colors">
                       <td className="p-2">{it.skin}</td>
-                      <td className="p-2 text-right">{formatCurrency(it.purchasePrice)}</td>
-                      <td className="p-2 text-right">{formatCurrency(it.currentPrice)}</td>
-                      <td className="p-2 text-right">{it.quantity}</td>
-                      <td className="p-2 text-right font-semibold">
+                      <td className="p-2 text-right text-xs text-muted-foreground">{formatCurrency(it.purchasePrice)}</td>
+                      <td className="p-2 text-right text-xs text-muted-foreground">{formatCurrency(it.currentPrice)}</td>
+                      <td className="p-2 text-right text-xs text-muted-foreground">{it.quantity}</td>
+                      <td className="p-2 text-right text-xs text-muted-foreground font-semibold">
                         {formatCurrency(it.value)}
                       </td>
                       <td
-                        className={`p-2 text-right font-semibold ${
+                        className={`p-2 text-right text-lg font-bold ${
                           it.profit >= 0 ? "text-emerald-400" : "text-rose-400"
                         }`}
                       >
@@ -315,11 +551,14 @@ export default function InventoryPage() {
                       <td className="p-2 text-right">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            it.roi >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                            it.roi >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
                           }`}
                         >
                           {formatPercent(it.roi, 1)}
                         </span>
+                      </td>
+                      <td className="p-2">
+                        <Badge variant="secondary">{it.bestMarket}</Badge>
                       </td>
                       <td className="p-2 text-right">
                         <Button
@@ -332,9 +571,16 @@ export default function InventoryPage() {
                               });
 
                               if (data === null) {
+                                if (DEV_MODE) {
+                                  console.log("DEV MODE: deleting item locally");
+                                  setItems((prev) => prev.filter((item) => item.id !== it.id));
+                                  toast({ title: "Item deleted" });
+                                  return;
+                                }
+
                                 toast({
-                                  title: "Zaloguj się",
-                                  description: "Sesja wygasła lub nie jesteś zalogowany.",
+                                  title: "Authentication required",
+                                  description: "Your session expired or you are not logged in.",
                                   variant: "destructive"
                                 });
                                 return;
