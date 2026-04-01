@@ -1,21 +1,22 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get("next") || "/dashboard"
   const error = searchParams.get("error")
+  const hasHandledSteamLogin = useRef(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [steamError, setSteamError] = useState<string | null>(null)
   useEffect(() => {
     if (!error) return
 
@@ -35,6 +36,63 @@ export default function LoginPage() {
     })
   }, [error])
 
+  useEffect(() => {
+    if (hasHandledSteamLogin.current) return
+
+    const params = new URLSearchParams(window.location.search)
+    const claimedId = params.get("openid.claimed_id")
+    if (!claimedId) return
+
+    console.log("Steam params:", window.location.search)
+
+    const steamId = claimedId.split("/").filter(Boolean).pop() || null
+    console.log("Steam ID:", steamId)
+
+    hasHandledSteamLogin.current = true
+    setLoading(true)
+    setSteamError(null)
+
+    const exchangeSteamLogin = async () => {
+      try {
+        if (!steamId) {
+          throw new Error("Missing Steam ID")
+        }
+
+        const res = await fetch("http://localhost:4000/api/auth/steam/exchange", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            steamId,
+          }),
+        })
+
+        if (res.ok) {
+          console.log("Exchange success")
+          window.location.href = "/dashboard"
+          return
+        }
+
+        console.error("Exchange failed")
+        throw new Error("Steam login failed")
+      } catch (error) {
+        console.error("Exchange failed", error)
+        setSteamError("Steam login failed")
+        toast({
+          title: "Steam login failed",
+          description: "Spróbuj ponownie za chwilę.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void exchangeSteamLogin()
+  }, [])
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-lg">
@@ -49,9 +107,11 @@ export default function LoginPage() {
             Track your skin flips and maximize your ROI
           </p>
         </div>
-        {error ? (
+        {error || steamError ? (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-card p-3 text-sm text-destructive">
-            {error === "steam_auth_failed"
+            {steamError
+              ? steamError
+              : error === "steam_auth_failed"
               ? "Steam login failed. Sprobuj ponownie."
               : `Login error: ${error}`}
           </div>

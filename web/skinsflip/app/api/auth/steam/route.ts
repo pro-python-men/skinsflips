@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     process.env.NEXT_PUBLIC_APP_ORIGIN ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : url.origin);
 
-  const returnTo = new URL("/api/auth/steam/callback", origin);
+  const returnTo = new URL("/login", origin);
   returnTo.searchParams.set("next", nextPath);
 
   const realm = origin.endsWith("/") ? origin : `${origin}/`;

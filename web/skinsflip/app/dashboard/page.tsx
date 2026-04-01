@@ -181,6 +181,24 @@ export default function DashboardPage() {
           <StatCard title="Average ROI" value={formatPercent(avgROI, 1)} description="Across flips" icon={TrendingUp} trend={avgROI >= 0 ? "up" : "down"} />
         </div>
 
+        {stats.totalFlips === 0 ? (
+          <div className="py-10 text-center">
+            <p className="text-lg font-semibold">
+              You don’t have any flips yet
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Start by finding your first profitable deal
+            </p>
+
+            <button
+              onClick={() => window.location.href = "/best-flips"}
+              className="mt-4 rounded-md bg-emerald-500 px-4 py-2 font-medium text-black"
+            >
+              Find Best Flips
+            </button>
+          </div>
+        ) : null}
+
         <ROIChart data={roiData} />
         <ProfitChart flips={filteredFlips} />
         <FlipsTable flips={filteredFlips} />

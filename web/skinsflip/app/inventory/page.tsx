@@ -31,11 +31,10 @@ type InventoryItem = {
 };
 
 export default function InventoryPage() {
-
-
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   const [mounted, setMounted] = useState(false);
 
@@ -44,41 +43,6 @@ export default function InventoryPage() {
   const [currentPrice, setCurrentPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
-
-  const mockInventory: InventoryItem[] = [
-    {
-      id: "1",
-      skin: "AK-47 | Redline",
-      purchasePrice: 10,
-      currentPrice: 15,
-      quantity: 2,
-      profit: 10,
-      roi: 50,
-      bestMarket: "Skinport",
-      bestSell: {
-        market: "Buff",
-        price: 18,
-        profit: 16,
-        roi: 80
-      }
-    },
-    {
-      id: "2",
-      skin: "AWP | Asiimov",
-      purchasePrice: 80,
-      currentPrice: 70,
-      quantity: 1,
-      profit: -10,
-      roi: -12.5,
-      bestMarket: "Steam",
-      bestSell: {
-        market: "Skinport",
-        price: 85,
-        profit: 5,
-        roi: 6.25
-      }
-    }
-  ];
 
   type InventoryRow = InventoryItem & {
     cost: number;
@@ -138,16 +102,12 @@ export default function InventoryPage() {
     };
   }, [items]);
 
-  // 🔥 AUTH CHECK
-
-
   const refresh = async () => {
     setLoading(true);
     setError("");
     try {
       const data = await apiFetch("/api/inventory/profit");
       if (!data) {
-        // Auth failed or no backend - demo mode
         setItems([]);
         setLoading(false);
         return;
@@ -176,14 +136,12 @@ export default function InventoryPage() {
       });
       setItems(itemsWithBestSell);
     } catch (e: any) {
-      // Handle 405 errors gracefully in demo mode
       if (e?.message?.includes("405") || e?.message?.includes("Method Not Allowed")) {
         setItems([]);
         setError("");
         setLoading(false);
         return;
       }
-      // Only show error for real failures, not auth
       setError(e?.message || "Failed to load inventory");
     } finally {
       setLoading(false);
@@ -195,13 +153,61 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const data = await apiFetch("/api/auth/me");
+        setAuthorized(Boolean((data as any)?.user));
+      } catch {
+        setAuthorized(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (authorized !== true) return;
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authorized]);
 
   if (!mounted) return null;
 
-  // 🔥 LOADING AUTH
+  if (authorized === null) {
+    return (
+      <DashboardLayout title="Inventory">
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="text-sm text-muted-foreground">Checking your account...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (authorized === false) {
+    return (
+      <DashboardLayout title="Inventory">
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-8 text-center shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)]">
+            <h2 className="text-3xl font-semibold text-foreground">
+              Login with Steam to view your inventory
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Track your skins and find the best place to sell them
+            </p>
+            <div className="mt-6">
+              <Button asChild className="bg-[#1b2838] text-white hover:bg-[#2a475e]">
+                <a href="/api/auth/steam" className="inline-flex items-center gap-2">
+                  <img src="/favicon.ico" alt="Steam" className="h-4 w-4" />
+                  Login with Steam
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Inventory">
       <div className="space-y-6">
