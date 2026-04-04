@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Package,
-  Calculator,
   History,
   Settings,
   TrendingUp,
@@ -25,7 +24,6 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/best-flips", label: "Best Flips", icon: TrendingUp },
-  { href: "/calculator", label: "Flip Calculator", icon: Calculator },
   { href: "/history", label: "Flip History", icon: History },
   { href: "/settings", label: "Settings", icon: Settings },
 ]

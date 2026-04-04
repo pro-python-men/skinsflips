@@ -1,8 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Calculator } from "lucide-react"
 
 export interface SkinItem {
   id: string
@@ -16,10 +14,9 @@ export interface SkinItem {
 
 interface InventoryCardProps {
   item: SkinItem
-  onUseInCalculator?: (item: SkinItem) => void
 }
 
-export function InventoryCard({ item, onUseInCalculator }: InventoryCardProps) {
+export function InventoryCard({ item }: InventoryCardProps) {
   return (
     <div className="group rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-lg">
       <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-muted/50">
@@ -40,15 +37,6 @@ export function InventoryCard({ item, onUseInCalculator }: InventoryCardProps) {
           <span className="text-xs text-muted-foreground">FV: {item.float.toFixed(4)}</span>
         </div>
         <p className="text-lg font-bold text-foreground">${item.price.toFixed(2)}</p>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          onClick={() => onUseInCalculator?.(item)}
-        >
-          <Calculator className="mr-2 h-4 w-4" />
-          Use in Calculator
-        </Button>
       </div>
     </div>
   )
