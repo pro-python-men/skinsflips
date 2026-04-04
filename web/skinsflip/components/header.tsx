@@ -17,6 +17,8 @@ type AuthUser = {
   id: number
   email?: string | null
   steamId?: string | null
+  displayName?: string | null
+  avatarUrl?: string | null
 }
 
 interface HeaderProps {
@@ -83,13 +85,20 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder-avatar.png" alt="User avatar" />
+                <AvatarImage
+                  src={user.avatarUrl ?? "/placeholder-avatar.png"}
+                  alt="User avatar"
+                />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.email?.[0]?.toUpperCase() ?? "U"}
+                  {user.displayName?.[0]?.toUpperCase() ??
+                    user.email?.[0]?.toUpperCase() ??
+                    "U"}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium text-foreground sm:inline">
-                {user.email ?? user.steamId ?? "User"}
+                {user.displayName ??
+                  (user.email?.endsWith("@local") ? null : user.email) ??
+                  "User"}
               </span>
             </Button>
           </DropdownMenuTrigger>

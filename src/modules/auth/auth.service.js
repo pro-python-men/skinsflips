@@ -9,6 +9,39 @@ import {
   createSteamUser
 } from "./auth.repository.js";
 
+const STEAM_WEB_API_KEY = process.env.STEAM_WEB_API_KEY || "";
+
+async function fetchSteamProfile(steamId) {
+  try {
+    if (!STEAM_WEB_API_KEY) return { displayName: null, avatarUrl: null };
+
+    const url = new URL(
+      "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
+    );
+    url.searchParams.set("key", STEAM_WEB_API_KEY);
+    url.searchParams.set("steamids", steamId);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) return { displayName: null, avatarUrl: null };
+
+    const data = await res.json().catch(() => null);
+    const player = data?.response?.players?.[0];
+
+    const rawName = player?.personaname;
+    const displayName =
+      typeof rawName === "string" && rawName.trim() ? rawName.trim() : null;
+
+    const rawAvatar =
+      player?.avatarfull ?? player?.avatarmedium ?? player?.avatar ?? null;
+    const avatarUrl =
+      typeof rawAvatar === "string" && rawAvatar.trim() ? rawAvatar.trim() : null;
+
+    return { displayName, avatarUrl };
+  } catch {
+    return { displayName: null, avatarUrl: null };
+  }
+}
+
 function isValidEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -67,6 +100,7 @@ export async function loginUser({ email, password }) {
 
   return { token, user: { id: user.id, email: user.email } };
 }
+
 function isValidSteamId(steamId) {
   return typeof steamId === "string" && /^[0-9]{17}$/.test(steamId);
 }
@@ -82,15 +116,28 @@ export async function steamExchangeUser({ steamId }) {
     user = await createSteamUser({ steamId, email, passwordHash });
   }
 
+  const { displayName, avatarUrl } = await fetchSteamProfile(steamId);
+
   const config = getConfig();
   const token = signJwt(
-    { sub: String(user.id), email: user.email, steamId: user.steam_id || steamId },
+    {
+      sub: String(user.id),
+      email: user.email,
+      steamId: user.steam_id || steamId,
+      displayName,
+      avatarUrl
+    },
     { secret: config.jwt.secret, expiresInSeconds: config.jwt.expiresInSeconds }
   );
 
   return {
     token,
-    user: { id: user.id, email: user.email, steamId: user.steam_id || steamId }
+    user: {
+      id: user.id,
+      email: user.email,
+      steamId: user.steam_id || steamId,
+      displayName,
+      avatarUrl
+    }
   };
 }
-

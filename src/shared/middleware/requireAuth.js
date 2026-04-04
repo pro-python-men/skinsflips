@@ -25,7 +25,13 @@ export function requireAuth(req, _res, next) {
     const userId = Number(payload.sub);
     if (!userId) return next(ApiError.unauthorized());
 
-    req.user = { id: userId, email: payload.email || null, steamId: payload.steamId || null };
+    req.user = {
+      id: userId,
+      email: payload.email || null,
+      steamId: payload.steamId || null,
+      displayName: payload.displayName || null,
+      avatarUrl: payload.avatarUrl || null
+    };
     return next();
   } catch (err) {
     return next(err);
