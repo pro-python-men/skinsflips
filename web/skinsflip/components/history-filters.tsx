@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 
 interface HistoryFiltersProps {
   dateRange: string
@@ -54,13 +53,18 @@ export function HistoryFilters({
   onProfitFilterChange,
 }: HistoryFiltersProps) {
   return (
-    <div className="flex flex-wrap gap-4 rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-5">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+        Filters
+      </p>
+
+      <div className="flex flex-wrap gap-4">
       <div className="min-w-[150px] flex-1">
         <label className="mb-2 block text-xs font-medium text-muted-foreground">
           Date Range
         </label>
         <Select value={dateRange} onValueChange={onDateRangeChange}>
-          <SelectTrigger>
+          <SelectTrigger className="h-11 px-4 transition-colors hover:border-emerald-500">
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
@@ -78,7 +82,7 @@ export function HistoryFilters({
           Weapon
         </label>
         <Select value={weapon} onValueChange={onWeaponChange}>
-          <SelectTrigger>
+          <SelectTrigger className="h-11 px-4 transition-colors hover:border-emerald-500">
             <SelectValue placeholder="Select weapon" />
           </SelectTrigger>
           <SelectContent>
@@ -96,7 +100,7 @@ export function HistoryFilters({
           Profit
         </label>
         <Select value={profitFilter} onValueChange={onProfitFilterChange}>
-          <SelectTrigger>
+          <SelectTrigger className="h-11 px-4 transition-colors hover:border-emerald-500">
             <SelectValue placeholder="Filter by profit" />
           </SelectTrigger>
           <SelectContent>
@@ -107,6 +111,7 @@ export function HistoryFilters({
             ))}
           </SelectContent>
         </Select>
+      </div>
       </div>
     </div>
   )

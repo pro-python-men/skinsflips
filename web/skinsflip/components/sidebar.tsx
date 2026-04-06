@@ -40,7 +40,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         {!isCollapsed && (
-          <div className="flex items-center">
+          <Link href="/dashboard" className="flex items-center">
             <Image
               src="/logostrona.png"
               alt="CS Skin Flipper logo"
@@ -48,7 +48,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               height={40}
               className="object-contain"
             />
-          </div>
+          </Link>
         )}
         <Button
           variant="ghost"

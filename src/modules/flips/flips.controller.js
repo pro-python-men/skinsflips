@@ -1,5 +1,45 @@
 import { asyncHandler } from "../../shared/middleware/asyncHandler.js";
-import { listFlips, addFlip } from "./flips.service.js";
+import {
+  listFlips,
+  addFlip,
+  listTrackedFlips,
+  trackFlip,
+  completeFlip
+} from "./flips.service.js";
+
+function formatTrackedFlip(flip) {
+  const buyPrice = Number(flip.buy_price);
+  const sellPriceExpected = Number(flip.sell_price_expected);
+  const sellPriceActual =
+    flip.sell_price_actual === null || flip.sell_price_actual === undefined
+      ? null
+      : Number(flip.sell_price_actual);
+  const profitExpected = Number(flip.profit_expected);
+  const profitActual =
+    flip.profit_actual === null || flip.profit_actual === undefined
+      ? null
+      : Number(flip.profit_actual);
+
+  const roiExpected = buyPrice > 0 ? (profitExpected / buyPrice) * 100 : 0;
+  const roiActual = buyPrice > 0 && profitActual !== null ? (profitActual / buyPrice) * 100 : null;
+
+  return {
+    id: flip.id,
+    skinName: flip.skin_name,
+    buyPrice,
+    sellPriceExpected,
+    sellPriceActual,
+    profitExpected,
+    profitActual,
+    sourceBuy: flip.source_buy,
+    sourceSell: flip.source_sell,
+    status: flip.status,
+    roiExpected,
+    roiActual,
+    createdAt: flip.created_at,
+    completedAt: flip.completed_at
+  };
+}
 
 export const getFlips = asyncHandler(async (req, res) => {
   const flips = await listFlips({ userId: req.user.id });
@@ -44,11 +84,62 @@ export const createFlip = asyncHandler(async (req, res) => {
     createdAt: flip.created_at
   });
 });
+
+export const getMyTrackedFlips = asyncHandler(async (req, res) => {
+  const flips = await listTrackedFlips({ userId: req.user.id });
+  res.json(flips.map(formatTrackedFlip));
+});
+
+export const createTrackedFlip = asyncHandler(async (req, res) => {
+  const { skinName, buyPrice, sellPriceExpected, sourceBuy, sourceSell } = req.body || {};
+
+  const flip = await trackFlip({
+    userId: req.user.id,
+    skinName,
+    buyPrice,
+    sellPriceExpected,
+    sourceBuy,
+    sourceSell
+  });
+
+  res.status(201).json(formatTrackedFlip(flip));
+});
+
+export const markFlipAsCompleted = asyncHandler(async (req, res) => {
+  const { sellPriceActual } = req.body || {};
+
+  const flip = await completeFlip({
+    userId: req.user.id,
+    id: req.params.id,
+    sellPriceActual
+  });
+
+  res.json(formatTrackedFlip(flip));
+});
+
 export const getBestFlips = asyncHandler(async (req, res) => {
   const items = [
-    { skin: "AK-47 | Redline (FT)", buyPrice: 42.5, sellPrice: 49.9, source: "buff163" },
-    { skin: "AWP | Asiimov (BS)", buyPrice: 78.0, sellPrice: 88.0, source: "steam" },
-    { skin: "M4A1-S | Printstream (FT)", buyPrice: 120.0, sellPrice: 134.5, source: "skinport" }
+    {
+      skin: "AK-47 | Redline (FT)",
+      buyPrice: 42.5,
+      sellPrice: 49.9,
+      sourceBuy: "Skinport",
+      sourceSell: "Buff163"
+    },
+    {
+      skin: "AWP | Asiimov (BS)",
+      buyPrice: 78.0,
+      sellPrice: 88.0,
+      sourceBuy: "Steam Market",
+      sourceSell: "Skinport"
+    },
+    {
+      skin: "M4A1-S | Printstream (FT)",
+      buyPrice: 120.0,
+      sellPrice: 134.5,
+      sourceBuy: "Skinport",
+      sourceSell: "Buff163"
+    }
   ];
 
   const normalized = items.map((it, idx) => {
@@ -64,7 +155,9 @@ export const getBestFlips = asyncHandler(async (req, res) => {
       sellPrice,
       profit,
       roi,
-      source: String(it.source)
+      source: `${String(it.sourceBuy)} -> ${String(it.sourceSell)}`,
+      sourceBuy: String(it.sourceBuy),
+      sourceSell: String(it.sourceSell)
     };
   });
 

@@ -4,11 +4,17 @@ export async function getStatsByUserId(userId) {
   const result = await pool.query(
     `
     SELECT
-      COALESCE(SUM(profit), 0) AS total_profit,
-      COALESCE(AVG(roi), 0) AS average_roi,
+      COALESCE(SUM(profit_actual), 0) AS total_profit,
+      COALESCE(AVG(
+        CASE
+          WHEN buy_price > 0 AND profit_actual IS NOT NULL THEN (profit_actual / buy_price) * 100
+          ELSE NULL
+        END
+      ), 0) AS average_roi,
       COUNT(*)::int AS total_flips
-    FROM flips
+    FROM flip_history
     WHERE user_id = $1
+      AND status = 'completed'
   `,
     [userId]
   );

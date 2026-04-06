@@ -1,11 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { SteamLoginButton } from "@/components/steam-login-button"
 import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
@@ -116,17 +114,10 @@ export default function LoginPage() {
               : `Login error: ${error}`}
           </div>
         ) : null}
-        <a
+        <SteamLoginButton
           href={`/api/auth/steam?next=${encodeURIComponent(nextPath)}`}
-          className="w-full flex items-center justify-center gap-3 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-white py-2 px-4"
-        >
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/3670/3670157.png"
-            alt="Steam"
-            className="w-5 h-5"
-          />
-          Login with Steam
-        </a>
+          anchorClassName="w-full justify-center rounded-lg bg-[#1b2838] px-4 py-2 text-white hover:bg-[#2a475e]"
+        />
       </div>
     </div>
   )

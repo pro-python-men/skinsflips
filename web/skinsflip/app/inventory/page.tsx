@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
+import { SteamLoginButton } from "@/components/steam-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -187,20 +188,20 @@ export default function InventoryPage() {
     return (
       <DashboardLayout title="Inventory">
         <div className="flex min-h-[70vh] items-center justify-center px-4">
-          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-8 text-center shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)]">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)]">
             <h2 className="text-3xl font-semibold text-foreground">
-              Login with Steam to view your inventory
+              Unlock your inventory profit opportunities
             </h2>
             <p className="mt-3 text-sm text-muted-foreground">
-              Track your skins and find the best place to sell them
+              See where to sell your skins for the highest price across multiple marketplaces
             </p>
             <div className="mt-6">
-              <Button asChild className="bg-[#1b2838] text-white hover:bg-[#2a475e]">
-                <a href="/api/auth/steam" className="inline-flex items-center gap-2">
-                  <img src="/favicon.ico" alt="Steam" className="h-4 w-4" />
-                  Login with Steam
-                </a>
-              </Button>
+              <SteamLoginButton
+                href="/api/auth/steam"
+                useButtonWrapper
+                buttonClassName="bg-[#1b2838] text-white hover:bg-[#2a475e]"
+                anchorClassName="inline-flex"
+              />
             </div>
           </div>
         </div>

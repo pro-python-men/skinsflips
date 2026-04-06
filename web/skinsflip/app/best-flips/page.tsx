@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
-import { formatCurrency } from "@/lib/format"
+import { DollarSign } from "lucide-react"
 
 type Flip = {
   id: string
@@ -15,17 +16,22 @@ type Flip = {
   profit: number
   roi: number
   source: string
+  sourceBuy: string
+  sourceSell: string
 }
 
 export default function BestFlipsPage() {
   const [flips, setFlips] = useState<Flip[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [budget, setBudget] = useState(100)
+  const [budget, setBudget] = useState("100")
+  const [trackingId, setTrackingId] = useState<string | null>(null)
 
   const filteredFlips = useMemo(() => {
+    const numericBudget = Number(budget || 0)
+
     return flips
-      .filter((flip) => flip.buyPrice <= budget)
+      .filter((flip) => flip.buyPrice <= numericBudget)
       .sort((a, b) => b.roi - a.roi)
   }, [budget, flips])
 
@@ -62,6 +68,8 @@ export default function BestFlipsPage() {
           profit: Number(flip.profit),
           roi: Number(flip.roi),
           source: String(flip.source ?? ""),
+          sourceBuy: String(flip.sourceBuy ?? ""),
+          sourceSell: String(flip.sourceSell ?? ""),
         }))
       )
     } catch (e: any) {
@@ -76,10 +84,44 @@ export default function BestFlipsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const getRoiColor = (roi: number) => {
-    if (roi > 10) return "bg-emerald-500/20 text-emerald-400"
-    if (roi > 0) return "bg-yellow-500/20 text-yellow-400"
-    return "bg-red-500/20 text-red-400"
+  const handleTrackFlip = async (flip: Flip) => {
+    setTrackingId(flip.id)
+
+    try {
+      const data = await apiFetch("/api/flips/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skinName: flip.skin,
+          buyPrice: flip.buyPrice,
+          sellPriceExpected: flip.sellPrice,
+          sourceBuy: flip.sourceBuy || "Skinport",
+          sourceSell: flip.sourceSell || "Buff163",
+        }),
+      })
+
+      if (data === null) {
+        toast({
+          title: "Login with Steam",
+          description: "You need to log in before tracking flips.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Flip added to your tracker",
+        description: flip.skin,
+      })
+    } catch (e: any) {
+      toast({
+        title: "Could not track flip",
+        description: e?.message || "Unknown error",
+        variant: "destructive",
+      })
+    } finally {
+      setTrackingId(null)
+    }
   }
 
   const mockFlips = [
@@ -112,9 +154,9 @@ export default function BestFlipsPage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_34%)]" />
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <Badge className="w-fit border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-emerald-300">
+              <div className="w-fit rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-emerald-300">
                 🔥 Best deals right now
-              </Badge>
+              </div>
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold tracking-tight text-foreground">
                   Best Flips
@@ -131,18 +173,46 @@ export default function BestFlipsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Your budget:</span>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              $
-            </span>
-            <input
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
-              className="w-24 rounded-md border border-border bg-card px-3 py-1 pl-7 text-sm"
-            />
+        <div className="mt-4 space-y-2">
+          <label htmlFor="budget" className="block text-sm font-medium text-muted-foreground">
+            Enter your budget
+          </label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:max-w-xs">
+              <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="budget"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={budget}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "")
+
+                  if (value.startsWith("0") && value.length > 1) {
+                    setBudget(value.replace(/^0+/, ""))
+                  } else {
+                    setBudget(value)
+                  }
+                }}
+                onFocus={() => {
+                  if (budget === "100") {
+                    setBudget("")
+                  }
+                }}
+                onBlur={() => {
+                  if (budget === "") {
+                    setBudget("100")
+                  }
+                }}
+                placeholder="100"
+                className="bg-card pl-10"
+              />
+            </div>
+
+            <Button type="button" className="w-full sm:w-auto">
+              Show Best Deals
+            </Button>
           </div>
         </div>
 
@@ -179,7 +249,7 @@ export default function BestFlipsPage() {
                       index === 0 ? "xl:col-span-2" : "",
                     ].join(" ")}
                   >
-                    <div className="flex h-full flex-col gap-5">
+                    <div className="flex h-full flex-col justify-between gap-6">
                       {isFeatured ? (
                         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-emerald-300">
                           <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.9)]" />
@@ -187,59 +257,35 @@ export default function BestFlipsPage() {
                         </div>
                       ) : null}
 
-                      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                         <div className="min-w-0 flex-1 space-y-3">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h2 className="text-lg font-semibold text-foreground">
-                              {flip.skin}
-                            </h2>
-                            <Badge className="border border-border/80 bg-background/60 px-2.5 py-1 text-xs text-muted-foreground">
-                              {flip.source}
-                            </Badge>
-                          </div>
-
-                          <p className="text-2xl font-bold text-emerald-400">
-                            + ${profit.toFixed(2)}
-                          </p>
+                          <h2 className="text-lg font-semibold text-foreground">
+                            {flip.skin}
+                          </h2>
 
                           <p className="text-sm text-muted-foreground">
                             Buy ${flip.buyPrice.toFixed(2)} {"\u2192"} Sell ${flip.sellPrice.toFixed(2)}
                           </p>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-xl border border-border/70 bg-background/40 p-3">
-                              <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                                Market price
-                              </div>
-                              <div className="mt-2 text-lg font-semibold text-foreground">
-                                {formatCurrency(flip.buyPrice)}
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-border/70 bg-background/40 p-3">
-                              <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                                Estimated sell price
-                              </div>
-                              <div className="mt-2 text-lg font-semibold text-foreground">
-                                {formatCurrency(flip.sellPrice)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-3 lg:min-w-[180px] lg:items-end">
-                          <span className={`rounded-md px-2 py-1 text-xs font-semibold ${getRoiColor(flip.roi)}`}>
-                            Return {flip.roi.toFixed(1)}%
-                          </span>
                           <p className="text-xs text-muted-foreground">
-                            Based on recent sales
+                            Buy on {flip.sourceBuy || "market"} • Sell on {flip.sourceSell || "Steam Market"}
                           </p>
                         </div>
+
+                        <p className="text-4xl font-bold text-emerald-400 lg:text-right">
+                          + ${profit.toFixed(2)}
+                        </p>
                       </div>
 
                       <div className="mt-auto flex justify-end">
-                        <button className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600">
-                          View deal
-                        </button>
+                        <Button
+                          type="button"
+                          onClick={() => handleTrackFlip(flip)}
+                          disabled={trackingId === flip.id}
+                          className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600"
+                        >
+                          {trackingId === flip.id ? "Tracking..." : "Track this flip"}
+                        </Button>
                       </div>
                     </div>
                   </article>

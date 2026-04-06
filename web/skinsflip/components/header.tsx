@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { SteamLoginButton } from "@/components/steam-login-button"
 import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
 
@@ -71,15 +72,12 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
       </div>
 
       {loading ? null : user === null ? (
-        <Button asChild>
-          <a
-            href="/api/auth/steam"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm transition"
-          >
-            <img src="/favicon.ico" alt="Steam" className="w-4 h-4" />
-            Login with Steam
-          </a>
-        </Button>
+        <SteamLoginButton
+          href="/api/auth/steam"
+          iconSize={28}
+          useButtonWrapper
+          anchorClassName="px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm transition"
+        />
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -24,7 +24,9 @@ export async function GET() {
         sellPrice: Number(f.sellPrice),
         profit: Number(f.profit),
         roi: Number(f.roi),
-        source: String(f.source ?? "")
+        source: String(f.source ?? ""),
+        sourceBuy: String(f.sourceBuy ?? ""),
+        sourceSell: String(f.sourceSell ?? "")
       }))
     : [];
 
