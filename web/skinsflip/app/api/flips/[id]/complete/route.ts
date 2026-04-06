@@ -5,11 +5,11 @@ import { NextResponse } from "next/server";
 import { backendFetch, unauthorized } from "@/lib/backend";
 
 type Context = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function PATCH(req: Request, context: Context) {
-  const { id } = context.params;
+  const { id } = await context.params;
   const body = await req.json().catch(() => ({}));
 
   const { response, unauthorized: isUnauthorized } = await backendFetch(`/flips/${id}/complete`, {

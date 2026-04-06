@@ -148,6 +148,15 @@ export default function HistoryPage() {
   const trackedCount = flips.filter((flip) => flip.status === "tracked").length
 
   const handleCompleteFlip = async (flip: TrackedFlip) => {
+    if (!/^\d+$/.test(String(flip.id))) {
+      toast({
+        title: "Could not update flip",
+        description: `Invalid flip id: ${String(flip.id)}`,
+        variant: "destructive",
+      })
+      return
+    }
+
     const currentValue = sellValues[flip.id] ?? String(flip.sellPriceExpected)
     const numericValue = Number(currentValue)
 

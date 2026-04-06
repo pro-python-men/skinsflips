@@ -236,7 +236,7 @@ export default function BestFlipsPage() {
             <div className="grid gap-4 xl:grid-cols-2">
               {displayFlips.map((flip, index) => {
                 const isFeatured = index < 3
-                const profit = flip.sellPrice - flip.buyPrice
+                const profit = flip.profit
 
                 return (
                   <article

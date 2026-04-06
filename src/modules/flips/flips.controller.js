@@ -4,8 +4,10 @@ import {
   addFlip,
   listTrackedFlips,
   trackFlip,
-  completeFlip
+  completeFlip,
+  getBestFlipsReal
 } from "./flips.service.js";
+
 
 function formatTrackedFlip(flip) {
   const buyPrice = Number(flip.buy_price);
@@ -117,49 +119,8 @@ export const markFlipAsCompleted = asyncHandler(async (req, res) => {
   res.json(formatTrackedFlip(flip));
 });
 
-export const getBestFlips = asyncHandler(async (req, res) => {
-  const items = [
-    {
-      skin: "AK-47 | Redline (FT)",
-      buyPrice: 42.5,
-      sellPrice: 49.9,
-      sourceBuy: "Skinport",
-      sourceSell: "Buff163"
-    },
-    {
-      skin: "AWP | Asiimov (BS)",
-      buyPrice: 78.0,
-      sellPrice: 88.0,
-      sourceBuy: "Steam Market",
-      sourceSell: "Skinport"
-    },
-    {
-      skin: "M4A1-S | Printstream (FT)",
-      buyPrice: 120.0,
-      sellPrice: 134.5,
-      sourceBuy: "Skinport",
-      sourceSell: "Buff163"
-    }
-  ];
-
-  const normalized = items.map((it, idx) => {
-    const buyPrice = Number(it.buyPrice);
-    const sellPrice = Number(it.sellPrice);
-    const profit = sellPrice - buyPrice;
-    const roi = buyPrice > 0 ? (profit / buyPrice) * 100 : 0;
-
-    return {
-      id: String(idx + 1),
-      skin: String(it.skin),
-      buyPrice,
-      sellPrice,
-      profit,
-      roi,
-      source: `${String(it.sourceBuy)} -> ${String(it.sourceSell)}`,
-      sourceBuy: String(it.sourceBuy),
-      sourceSell: String(it.sourceSell)
-    };
-  });
-
-  res.json(normalized);
+export const getBestFlips = asyncHandler(async (_req, res) => {
+  const data = await getBestFlipsReal();
+  res.json(data);
 });
+
