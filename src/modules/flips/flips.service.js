@@ -130,12 +130,34 @@ function feeCents(sellCents, feeRate, mode = "ceil") {
   return Math.max(1, raw);
 }
 
+function getLiquidityLabel(listingCount) {
+  if (listingCount > 50) return "high";
+  if (listingCount > 10) return "medium";
+  return "low";
+}
+
+function calculateConfidence(roi, liquidity) {
+  let base = Number(roi) || 0;
+
+  if (liquidity === "high") base += 20;
+  if (liquidity === "medium") base += 10;
+
+  return Math.min(100, Math.max(0, Math.round(base)));
+}
+
+function getEta(liquidity) {
+  if (liquidity === "high") return "Sells fast";
+  if (liquidity === "medium") return "May take a few days";
+  return undefined;
+}
+
 function buildOpportunity({
   name,
   buyCents,
   sellCents,
   feeRateSell,
   feeMode = "ceil",
+  listingCount,
   sourceBuy,
   sourceSell
 }) {
@@ -146,17 +168,26 @@ function buildOpportunity({
   if (profitCents <= 0) return null;
 
   const roi = (profitCents / buyCents) * 100;
+  const normalizedListingCount = Number.isFinite(Number(listingCount))
+    ? Math.max(0, Math.round(Number(listingCount)))
+    : undefined;
+  const liquidity = getLiquidityLabel(normalizedListingCount ?? 0);
+
+  if (liquidity === "low") return null;
 
   return {
     id: `${sourceBuy}->${sourceSell}:${name}`,
-    skin: name,
+    name,
     buyPrice: buyCents / 100,
     sellPrice: sellCents / 100,
     profit: profitCents / 100,
     roi,
+    listingCount: normalizedListingCount,
+    liquidity,
+    confidence: calculateConfidence(roi, liquidity),
+    eta: getEta(liquidity),
     sourceBuy,
-    sourceSell,
-    source: `${sourceBuy} -> ${sourceSell}`
+    sourceSell
   };
 }
 
@@ -231,6 +262,7 @@ export async function getBestFlipsReal() {
       sellCents: csfloatBuySell,
       feeRateSell: 0.02,
       feeMode: "ceil",
+      listingCount: qty,
       sourceBuy: "Skinport",
       sourceSell: "CSFloat"
     });
@@ -243,13 +275,17 @@ export async function getBestFlipsReal() {
       sellCents: skinportSell,
       feeRateSell: 0.08,
       feeMode: "round",
+      listingCount: qty,
       sourceBuy: "CSFloat",
       sourceSell: "Skinport"
     });
     if (b) out.push(b);
   }
 
-  out.sort((x, y) => y.roi - x.roi);
+  out.sort((x, y) => {
+    if (y.confidence !== x.confidence) return y.confidence - x.confidence;
+    return y.profit - x.profit;
+  });
   const sliced = out.slice(0, Number.isFinite(limit) ? limit : 50);
 
   cache = { at: now, data: sliced };

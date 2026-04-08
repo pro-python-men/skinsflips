@@ -1,24 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
+import { DealCard } from "@/components/deal-card"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, getBestFlips } from "@/lib/api"
 import { DollarSign } from "lucide-react"
-
-type Flip = {
-  id: string
-  skin: string
-  buyPrice: number
-  sellPrice: number
-  profit: number
-  roi: number
-  source: string
-  sourceBuy: string
-  sourceSell: string
-}
+import type { Flip } from "@/lib/types/flip"
 
 export default function BestFlipsPage() {
   const [flips, setFlips] = useState<Flip[]>([])
@@ -27,29 +17,12 @@ export default function BestFlipsPage() {
   const [budget, setBudget] = useState("100")
   const [trackingId, setTrackingId] = useState<string | null>(null)
 
-  const filteredFlips = useMemo(() => {
-    const numericBudget = Number(budget || 0)
-
-    return flips
-      .filter((flip) => flip.buyPrice <= numericBudget)
-      .sort((a, b) => b.roi - a.roi)
-  }, [budget, flips])
-
-  const fallbackFlips = useMemo(() => {
-    return [...flips]
-      .sort((a, b) => b.roi - a.roi)
-      .slice(0, 5)
-  }, [flips])
-
-  const displayFlips =
-    filteredFlips.length > 0 ? filteredFlips : fallbackFlips
-
   const loadFlips = async () => {
     setLoading(true)
     setError("")
 
     try {
-      const data = await apiFetch("/api/flips/best")
+      const data = await getBestFlips()
       if (!data || (Array.isArray(data) && data.length === 0)) {
         setFlips([])
         return
@@ -62,14 +35,21 @@ export default function BestFlipsPage() {
       setFlips(
         data.map((flip) => ({
           id: String(flip.id),
-          skin: String(flip.skin),
+          name: String(flip.name),
           buyPrice: Number(flip.buyPrice),
           sellPrice: Number(flip.sellPrice),
           profit: Number(flip.profit),
           roi: Number(flip.roi),
-          source: String(flip.source ?? ""),
-          sourceBuy: String(flip.sourceBuy ?? ""),
-          sourceSell: String(flip.sourceSell ?? ""),
+          sourceBuy: String(flip.sourceBuy),
+          sourceSell: String(flip.sourceSell),
+          listingCount:
+            flip.listingCount == null ? undefined : Number(flip.listingCount),
+          liquidity: flip.liquidity,
+          confidence:
+            flip.confidence == null ? undefined : Number(flip.confidence),
+          eta: flip.eta == null ? undefined : String(flip.eta),
+          createdAt:
+            flip.createdAt == null ? undefined : String(flip.createdAt),
         }))
       )
     } catch (e: any) {
@@ -92,11 +72,11 @@ export default function BestFlipsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skinName: flip.skin,
+          skinName: flip.name,
           buyPrice: flip.buyPrice,
           sellPriceExpected: flip.sellPrice,
-          sourceBuy: flip.sourceBuy || "Skinport",
-          sourceSell: flip.sourceSell || "Buff163",
+          sourceBuy: flip.sourceBuy,
+          sourceSell: flip.sourceSell,
         }),
       })
 
@@ -111,7 +91,7 @@ export default function BestFlipsPage() {
 
       toast({
         title: "Flip added to your tracker",
-        description: flip.skin,
+        description: flip.name,
       })
     } catch (e: any) {
       toast({
@@ -124,45 +104,19 @@ export default function BestFlipsPage() {
     }
   }
 
-  const mockFlips = [
-    {
-      name: "AK-47 | Redline",
-      buy: 45,
-      sell: 57
-    },
-    {
-      name: "AWP | Asiimov",
-      buy: 120,
-      sell: 145
-    },
-    {
-      name: "M4A1-S | Printstream",
-      buy: 90,
-      sell: 108
-    },
-    {
-      name: "Glock-18 | Gamma Doppler",
-      buy: 60,
-      sell: 74
-    }
-  ];
-
   return (
-    <DashboardLayout title="Top Opportunities">
+    <DashboardLayout title="Best Flip Opportunities">
       <div className="space-y-6">
         <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-[0_24px_80px_-40px_rgba(16,185,129,0.45)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_34%)]" />
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <div className="w-fit rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-emerald-300">
-                🔥 Best deals right now
-              </div>
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-                  Best Flips
+                  Best Flip Opportunities
                 </h1>
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                  Find the most profitable CS2 skin deals based on recent market activity.
+                  Only high-demand, fast-selling skins
                 </p>
               </div>
             </div>
@@ -227,112 +181,52 @@ export default function BestFlipsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredFlips.length === 0 ? (
-              <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                Showing best deals overall
+            {flips.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center">
+                <p className="text-lg font-semibold text-foreground">No good opportunities right now</p>
+                <p className="mt-2 text-sm text-muted-foreground">Check back later</p>
               </div>
             ) : null}
 
-            <div className="grid gap-4 xl:grid-cols-2">
-              {displayFlips.map((flip, index) => {
-                const isFeatured = index < 3
-                const profit = flip.profit
+            {flips.length > 0 ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {flips.map((flip, index) => {
+                  const isFeatured = index < 3
 
-                return (
-                  <article
-                    key={flip.id}
-                    className={[
-                      "group rounded-xl border border-border bg-card p-5 transition duration-200 hover:scale-[1.01]",
-                      isFeatured
-                        ? "border-green-500/30 shadow-[0_20px_60px_-35px_rgba(34,197,94,0.55)]"
-                        : "hover:border-emerald-500/20 hover:shadow-[0_18px_45px_-35px_rgba(34,197,94,0.35)]",
-                      index === 0 ? "xl:col-span-2" : "",
-                    ].join(" ")}
-                  >
-                    <div className="flex h-full flex-col justify-between gap-6">
-                      {isFeatured ? (
-                        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-emerald-300">
-                          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.9)]" />
-                          Top Opportunity
-                        </div>
-                      ) : null}
+                  return (
+                    <article
+                      key={flip.id}
+                      className={[
+                        "group transition duration-200 hover:scale-[1.01]",
+                        isFeatured
+                          ? "xl:scale-[1.01] drop-shadow-[0_20px_60px_rgba(34,197,94,0.18)]"
+                          : "",
+                        index === 0 ? "xl:col-span-2" : "",
+                      ].join(" ")}
+                    >
+                      <div className="flex h-full flex-col justify-between gap-3">
+                        {isFeatured ? (
+                          <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-[0.22em] text-emerald-300">
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.9)]" />
+                            Top Opportunity
+                          </div>
+                        ) : null}
 
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <h2 className="text-lg font-semibold text-foreground">
-                            {flip.skin}
-                          </h2>
-
-                          <p className="text-sm text-muted-foreground">
-                            Buy ${flip.buyPrice.toFixed(2)} {"\u2192"} Sell ${flip.sellPrice.toFixed(2)}
-                          </p>
-
-                          <p className="text-xs text-muted-foreground">
-                            Buy on {flip.sourceBuy || "market"} • Sell on {flip.sourceSell || "Steam Market"}
-                          </p>
-                        </div>
-
-                        <p className="text-4xl font-bold text-emerald-400 lg:text-right">
-                          + ${profit.toFixed(2)}
-                        </p>
+                        <DealCard
+                          {...flip}
+                          onTrack={() => handleTrackFlip(flip)}
+                          isTracking={trackingId === flip.id}
+                          featured={index === 0}
+                          isBest={index === 0}
+                        />
                       </div>
-
-                      <div className="mt-auto flex justify-end">
-                        <Button
-                          type="button"
-                          onClick={() => handleTrackFlip(flip)}
-                          disabled={trackingId === flip.id}
-                          className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600"
-                        >
-                          {trackingId === flip.id ? "Tracking..." : "Track this flip"}
-                        </Button>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
+                    </article>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
         )}
-
-        <div className="mt-8">
-          <h3 className="mb-4 text-lg font-semibold">
-            🔥 Today’s best opportunities
-          </h3>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mockFlips.map((flip, index) => {
-              const profit = flip.sell - flip.buy;
-
-              return (
-                <div
-                  key={index}
-                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
-                >
-                  <p className="font-medium">
-                    {flip.name}
-                  </p>
-
-                  <p className="text-2xl font-bold text-emerald-400">
-                    + ${profit.toFixed(2)}
-                  </p>
-
-                  <p className="text-sm text-muted-foreground">
-                    Buy ${flip.buy} → Sell ${flip.sell}
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Based on recent sales
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="mt-3 text-xs text-muted-foreground">
-            More deals coming soon...
-          </p>
-        </div>
 
         <div className="text-sm text-muted-foreground">
           Prices are estimated from recent sales data

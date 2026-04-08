@@ -19,14 +19,23 @@ export async function GET() {
   const normalized = Array.isArray(data)
     ? data.map((f) => ({
         id: String(f.id),
-        skin: String(f.skin),
+        name: String(f.name),
         buyPrice: Number(f.buyPrice),
         sellPrice: Number(f.sellPrice),
         profit: Number(f.profit),
         roi: Number(f.roi),
-        source: String(f.source ?? ""),
-        sourceBuy: String(f.sourceBuy ?? ""),
-        sourceSell: String(f.sourceSell ?? "")
+        sourceBuy: String(f.sourceBuy),
+        sourceSell: String(f.sourceSell),
+        listingCount:
+          f.listingCount == null ? undefined : Number(f.listingCount),
+        liquidity:
+          f.liquidity === "high" || f.liquidity === "medium" || f.liquidity === "low"
+            ? f.liquidity
+            : undefined,
+        confidence:
+          f.confidence == null ? undefined : Number(f.confidence),
+        eta: f.eta == null ? undefined : String(f.eta),
+        createdAt: f.createdAt == null ? undefined : String(f.createdAt)
       }))
     : [];
 

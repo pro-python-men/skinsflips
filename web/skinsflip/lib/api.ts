@@ -20,3 +20,15 @@ export async function apiFetch(url: string, options?: RequestInit) {
 
   return await res.json()
 }
+
+export async function getBestFlips() {
+  const res = await fetch("/api/flips/best", {
+    credentials: "include",
+  })
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch flips")
+  }
+
+  return res.json()
+}

@@ -12,7 +12,6 @@ import { ROIChart } from "@/components/roi-chart"
 import { FlipsTable, Flip } from "@/components/flips-table"
 import { DollarSign, TrendingUp, RefreshCcw, Package } from "lucide-react"
 import { AddFlipForm } from "@/components/add-flip-form"
-import { DealCard } from "@/components/deal-card"
 import { formatCurrency, formatPercent } from "@/lib/format"
 
 type AuthUser = {
@@ -61,29 +60,28 @@ function HeroSection({ onFindBestFlips }: HeroSectionProps) {
   )
 }
 
-type ExampleDealsSectionProps = {
-  deals: Array<{ skin: string; buyPrice: number; sellPrice: number; profit: number }>
-}
+function HowItWorksSection() {
+  const steps = [
+    "Enter budget",
+    "Find underpriced skins",
+    "Sell for profit",
+  ]
 
-function ExampleDealsSection({ deals }: ExampleDealsSectionProps) {
   return (
-    <section className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">🔥 Today&apos;s best opportunities</h2>
-        <p className="text-sm text-muted-foreground">
-          Quick mock deals to show how much margin you can capture on today&apos;s market.
-        </p>
+    <section className="rounded-xl border border-border bg-card p-6">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">How it works</h2>
+        <p className="text-sm text-muted-foreground">Opportunities change quickly</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {deals.map((deal) => (
-          <DealCard
-            key={deal.skin}
-            skin={deal.skin}
-            buyPrice={deal.buyPrice}
-            sellPrice={deal.sellPrice}
-            profit={deal.profit}
-          />
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {steps.map((step, index) => (
+          <div key={step} className="rounded-lg border border-border/60 bg-background/20 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              Step {index + 1}
+            </p>
+            <p className="mt-2 text-base font-medium text-foreground">{step}</p>
+          </div>
         ))}
       </div>
     </section>
@@ -92,22 +90,22 @@ function ExampleDealsSection({ deals }: ExampleDealsSectionProps) {
 
 function BestFlipsEntrySection() {
   return (
-    <section id="best-flips" className="scroll-mt-24 rounded-xl border border-border bg-card p-6">
+    <section id="best-flips-entry" className="scroll-mt-24 rounded-xl border border-border bg-card p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-emerald-400">
             Best Flips
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Find the next skin you can flip for profit
+            See best opportunities
           </h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Check the best current opportunities based on your budget and compare where buying and selling makes the most sense.
+            Go straight to the latest flip opportunities and start scanning real deals.
           </p>
         </div>
 
         <Button asChild className="w-full sm:w-auto">
-          <Link href="/best-flips">Open Best Flips</Link>
+          <Link href="/best-flips">See opportunity</Link>
         </Button>
       </div>
     </section>
@@ -115,13 +113,6 @@ function BestFlipsEntrySection() {
 }
 
 export default function DashboardPage() {
-  const todaysDeals = [
-    { skin: "AK-47 | Redline", buyPrice: 18.25, sellPrice: 24.9, profit: 6.65 },
-    { skin: "AWP | Asiimov", buyPrice: 82.4, sellPrice: 94.8, profit: 12.4 },
-    { skin: "M4A1-S | Player Two", buyPrice: 31.75, sellPrice: 39.6, profit: 7.85 },
-    { skin: "USP-S | Printstream", buyPrice: 54.1, sellPrice: 63.95, profit: 9.85 },
-  ]
-
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -172,7 +163,14 @@ export default function DashboardPage() {
       : 0
 
   const scrollToBestFlips = () => {
-    document.getElementById("best-flips")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    const target = document.getElementById("best-flips-entry")
+
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
+
+    window.location.href = "/best-flips"
   }
 
   const refreshAuth = async () => {
@@ -257,7 +255,7 @@ export default function DashboardPage() {
         {user === null ? (
           <>
             <HeroSection onFindBestFlips={scrollToBestFlips} />
-            <ExampleDealsSection deals={todaysDeals} />
+            <HowItWorksSection />
             <BestFlipsEntrySection />
           </>
         ) : (
@@ -307,7 +305,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <section id="best-flips" className="scroll-mt-24">
+            <section id="add-flip-form" className="scroll-mt-24">
               <AddFlipForm onCreated={refresh} />
             </section>
 
