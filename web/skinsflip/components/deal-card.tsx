@@ -8,6 +8,9 @@ type DealCardProps = Pick<
   Flip,
   "name" | "buyPrice" | "sellPrice" | "profit" | "sourceBuy" | "sourceSell" | "liquidity" | "confidence" | "eta"
 > & {
+  sellWindow?: Flip["sellWindow"]
+  salesLast7d?: Flip["salesLast7d"]
+  stabilityScore?: Flip["stabilityScore"]
   onTrack?: () => void
   isTracking?: boolean
   featured?: boolean
@@ -28,6 +31,9 @@ export function DealCard({
   liquidity,
   confidence,
   eta,
+  sellWindow,
+  salesLast7d,
+  stabilityScore,
   onTrack,
   isTracking = false,
   featured = false,
@@ -52,6 +58,20 @@ export function DealCard({
       : liquidity === "medium"
         ? "Moderate demand"
         : undefined
+  const sellWindowText =
+    sellWindow === "7d"
+      ? "Sell price: median 7d"
+      : sellWindow === "30d"
+        ? "Sell price: median 30d"
+        : sellWindow === "90d"
+          ? "Sell price: median 90d"
+          : sellWindow
+            ? `Sell price: ${sellWindow}`
+            : undefined
+  const salesText =
+    typeof salesLast7d === "number" ? `Sales 7d: ${salesLast7d}` : undefined
+  const stabilityText =
+    typeof stabilityScore === "number" ? `Stability: ${Math.round(stabilityScore * 100)}%` : undefined
   const isLanding = variant === "landing"
 
   if (isLanding) {
@@ -151,6 +171,14 @@ export function DealCard({
                 <Progress value={confidence} className="mt-2 h-2 bg-white/10 [&_[data-slot=progress-indicator]]:bg-emerald-400" />
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {sellWindowText || salesText || stabilityText ? (
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+            {sellWindowText ? <div className="rounded-lg border border-border/60 bg-background/10 p-3">{sellWindowText}</div> : null}
+            {salesText ? <div className="rounded-lg border border-border/60 bg-background/10 p-3">{salesText}</div> : null}
+            {stabilityText ? <div className="rounded-lg border border-border/60 bg-background/10 p-3">{stabilityText}</div> : null}
           </div>
         ) : null}
 

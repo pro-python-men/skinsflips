@@ -24,6 +24,8 @@ export async function GET() {
         sellPrice: Number(f.sellPrice),
         profit: Number(f.profit),
         roi: Number(f.roi),
+        profitPercent: f.profitPercent == null ? undefined : Number(f.profitPercent),
+        rankScore: f.rankScore == null ? undefined : Number(f.rankScore),
         sourceBuy: String(f.sourceBuy),
         sourceSell: String(f.sourceSell),
         listingCount:
@@ -35,6 +37,10 @@ export async function GET() {
         confidence:
           f.confidence == null ? undefined : Number(f.confidence),
         eta: f.eta == null ? undefined : String(f.eta),
+        sellWindow: f.sellWindow == null ? undefined : String(f.sellWindow),
+        salesLast7d: f.salesLast7d == null ? undefined : Number(f.salesLast7d),
+        salesLast30d: f.salesLast30d == null ? undefined : Number(f.salesLast30d),
+        stabilityScore: f.stabilityScore == null ? undefined : Number(f.stabilityScore),
         createdAt: f.createdAt == null ? undefined : String(f.createdAt)
       }))
     : [];

@@ -3,7 +3,9 @@ import { ApiError } from "../../shared/errors/ApiError.js";
 export async function fetchCsfloatListings({
   limit = 1000,
   sortBy = "lowest_price",
-  type = "buy_now"
+  type = "buy_now",
+  marketHashName,
+  cursor
 } = {}) {
   const apiKey = process.env.CSFLOAT_API_KEY || "";
   if (!apiKey) throw ApiError.badRequest("Missing CSFLOAT_API_KEY");
@@ -14,6 +16,12 @@ export async function fetchCsfloatListings({
   url.searchParams.set("limit", String(safeLimit));
   url.searchParams.set("sort_by", sortBy);
   url.searchParams.set("type", type);
+  if (typeof marketHashName === "string" && marketHashName.trim()) {
+    url.searchParams.set("market_hash_name", marketHashName.trim());
+  }
+  if (typeof cursor === "string" && cursor.trim()) {
+    url.searchParams.set("cursor", cursor.trim());
+  }
 
   const res = await fetch(url.toString(), {
     headers: {

@@ -184,7 +184,10 @@ export default function BestFlipsPage() {
             {flips.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-8 text-center">
                 <p className="text-lg font-semibold text-foreground">No good opportunities right now</p>
-                <p className="mt-2 text-sm text-muted-foreground">Check back later</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  This is normal with strict filters (real sales only, fees included, and liquidity checks).
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">Try again in a few minutes or scan wider.</p>
               </div>
             ) : null}
 
