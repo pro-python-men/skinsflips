@@ -6,12 +6,9 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { SteamLoginButton } from "@/components/steam-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatPercent } from "@/lib/format";
-
-const DEV_MODE = true;
 
 type InventoryItem = {
   id: string;
@@ -19,24 +16,42 @@ type InventoryItem = {
   purchasePrice: number;
   currentPrice: number;
   quantity: number;
-  profit: number;
-  roi: number;
-  bestMarket: string;
-  bestSell?: {
-    market: string;
-    price: number;
-    profit: number;
-    roi: number;
-  };
   createdAt?: string;
 };
+
+type InventoryRow = InventoryItem & {
+  cost: number;
+  value: number;
+  profit: number;
+  roi: number;
+};
+
+function getSellRecommendation(row: InventoryRow) {
+  if (row.profit > 0 && row.roi >= 10) {
+    return {
+      label: "Sell now",
+      className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+    };
+  }
+
+  if (row.profit > 0) {
+    return {
+      label: "Worth listing",
+      className: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+    };
+  }
+
+  return {
+    label: "Hold",
+    className: "border-border/60 bg-background/20 text-muted-foreground",
+  };
+}
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-
   const [mounted, setMounted] = useState(false);
 
   const [skin, setSkin] = useState("");
@@ -44,105 +59,53 @@ export default function InventoryPage() {
   const [currentPrice, setCurrentPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
-
-  type InventoryRow = InventoryItem & {
-    cost: number;
-    value: number;
-  };
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const computed = useMemo(() => {
-    const rows: InventoryRow[] = items.map((it) => {
-      const quantity = Number(it.quantity) || 0;
-      const purchasePrice = Number(it.purchasePrice) || 0;
-      const currentPrice = Number(it.currentPrice) || 0;
+    const rows: InventoryRow[] = items
+      .map((item) => {
+        const qty = Number(item.quantity) || 0;
+        const buy = Number(item.purchasePrice) || 0;
+        const current = Number(item.currentPrice) || 0;
+        const cost = buy * qty;
+        const value = current * qty;
+        const profit = value - cost;
+        const roi = cost > 0 ? (profit / cost) * 100 : 0;
 
-      const cost = purchasePrice * quantity;
-      const value = currentPrice * quantity;
+        return {
+          ...item,
+          cost,
+          value,
+          profit,
+          roi,
+        };
+      })
+      .sort((a, b) => b.profit - a.profit);
 
-      return { ...it, cost, value };
-    });
-
-    const totalCost = rows.reduce((sum, r) => sum + r.cost, 0);
-    const totalValue = rows.reduce((sum, r) => sum + r.value, 0);
-    const totalProfit = rows.reduce((sum, r) => sum + r.profit, 0);
-    const totalRoi = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
-
-    const winners = rows.filter((r) => r.profit > 0).length;
-    const losers = rows.filter((r) => r.profit < 0).length;
-
-    const best = rows.reduce<InventoryRow | null>((acc, r) => {
-      if (!acc) return r;
-      return r.profit > acc.profit ? r : acc;
-    }, null);
-
-    const worst = rows.reduce<InventoryRow | null>((acc, r) => {
-      if (!acc) return r;
-      return r.profit < acc.profit ? r : acc;
-    }, null);
-
-    const bestSellOpportunity = items.reduce<InventoryItem | null>((acc, item) => {
-      if (!acc) return item;
-      const accRoi = acc.bestSell?.roi ?? 0;
-      const itemRoi = item.bestSell?.roi ?? 0;
-      return itemRoi > accRoi ? item : acc;
-    }, null);
+    const profitableRows = rows.filter((row) => row.profit > 0);
+    const holdRows = rows.filter((row) => row.profit <= 0);
+    const topOpportunity = profitableRows[0] ?? rows[0] ?? null;
+    const totalPotentialProfit = profitableRows.reduce((sum, row) => sum + row.profit, 0);
+    const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
 
     return {
       rows,
-      totals: {
-        totalCost,
-        totalValue,
-        totalProfit,
-        totalRoi,
-        winners,
-        losers,
-        best,
-        worst,
-        bestSellOpportunity
-      }
+      profitableRows,
+      holdRows,
+      topOpportunity,
+      totalPotentialProfit,
+      totalValue,
     };
   }, [items]);
 
   const refresh = async () => {
     setLoading(true);
     setError("");
+
     try {
-      const data = await apiFetch("/api/inventory/profit");
-      if (!data) {
-        setItems([]);
-        setLoading(false);
-        return;
-      }
-      if (Array.isArray(data) && data.length === 0) {
-        setItems([]);
-        setLoading(false);
-        return;
-      }
-      const itemsWithBestSell = (Array.isArray(data) ? (data as InventoryItem[]) : []).map((item) => {
-        if (!item.bestSell) {
-          const sellPrice = item.currentPrice * (1 + (5 + Math.random() * 15) / 100);
-          const sellProfit = sellPrice - item.purchasePrice;
-          const sellRoi = item.purchasePrice > 0 ? (sellProfit / item.purchasePrice) * 100 : 0;
-          return {
-            ...item,
-            bestSell: {
-              market: ["Skinport", "Buff", "Steam"][Math.floor(Math.random() * 3)],
-              price: sellPrice,
-              profit: sellProfit,
-              roi: sellRoi
-            }
-          };
-        }
-        return item;
-      });
-      setItems(itemsWithBestSell);
+      const data = await apiFetch("/api/inventory");
+      setItems(Array.isArray(data) ? (data as InventoryItem[]) : []);
     } catch (e: any) {
-      if (e?.message?.includes("405") || e?.message?.includes("Method Not Allowed")) {
-        setItems([]);
-        setError("");
-        setLoading(false);
-        return;
-      }
       setError(e?.message || "Failed to load inventory");
     } finally {
       setLoading(false);
@@ -157,7 +120,7 @@ export default function InventoryPage() {
     const checkAuth = async () => {
       try {
         const data = await apiFetch("/api/auth/me");
-        setAuthorized(Boolean((data as any)?.user));
+        setAuthorized(Boolean((data as { user?: unknown } | null)?.user));
       } catch {
         setAuthorized(false);
       }
@@ -169,7 +132,6 @@ export default function InventoryPage() {
   useEffect(() => {
     if (authorized !== true) return;
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorized]);
 
   if (!mounted) return null;
@@ -193,7 +155,7 @@ export default function InventoryPage() {
               Unlock your inventory profit opportunities
             </h2>
             <p className="mt-3 text-sm text-muted-foreground">
-              See where to sell your skins for the highest price across multiple marketplaces
+              See which skins are ready to sell and where your best profit is building.
             </p>
             <div className="mt-6">
               <SteamLoginButton
@@ -212,89 +174,324 @@ export default function InventoryPage() {
   return (
     <DashboardLayout title="Inventory">
       <div className="space-y-6">
-        <div className="text-xs text-muted-foreground">
-          Demo mode — prices are simulated
-        </div>
+        <header className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            Best sell opportunities in your inventory
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Start with the skins showing the strongest profit right now.
+          </p>
+        </header>
 
-        {/* Portfolio Stats Dashboard */}
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Section 1: Portfolio Value */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">Portfolio Value</div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <div className="text-2xl font-bold text-foreground">
-                {formatCurrency(computed.totals.totalValue)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Cost: {formatCurrency(computed.totals.totalCost)}
+        {error ? (
+          <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading inventory opportunities...
+          </div>
+        ) : computed.rows.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-8">
+            <div className="space-y-3 text-center">
+              <p className="text-xl font-semibold text-foreground">
+                No inventory tracked yet
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Add your first skin to instantly see current profit and whether it is worth selling now.
+              </p>
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    document.getElementById("add-inventory-item")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
+                >
+                  Add first item
+                </Button>
               </div>
             </div>
           </div>
+        ) : (
+          <>
+            {computed.topOpportunity ? (
+              <section className="rounded-2xl border border-emerald-500/25 bg-card p-6">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                      Start here
+                    </div>
+                    <h2 className="text-2xl font-semibold text-foreground">
+                      {computed.topOpportunity.skin}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      This is your strongest inventory decision right now based on current tracked prices.
+                    </p>
+                  </div>
 
-          {/* Section 2: Total Profit */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Profit/Loss</div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <div
-                className={`text-2xl font-bold ${
-                  computed.totals.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
-                {formatCurrency(computed.totals.totalProfit)}
-              </div>
-              <div
-                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                  computed.totals.totalRoi >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
-                }`}
-              >
-                {formatPercent(computed.totals.totalRoi, 1)}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Insights */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">Insights</div>
-            <div className="mt-3 space-y-2 text-sm">
-              <div>
-                <span className="text-muted-foreground">Profitable items:</span>{" "}
-                <span className="font-semibold text-emerald-400">{computed.totals.winners}</span>
-                <span className="text-muted-foreground"> / Losing:</span>{" "}
-                <span className="font-semibold text-rose-400">{computed.totals.losers}</span>
-              </div>
-              {computed.totals.best ? (
-                <div>
-                  <span className="text-muted-foreground">Top:</span>{" "}
-                  <span className="font-semibold text-emerald-400">
-                    {computed.totals.best.skin}
-                  </span>
+                  <div className="space-y-2 text-left lg:text-right">
+                    <div
+                      className={`text-4xl font-bold ${
+                        computed.topOpportunity.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {formatCurrency(computed.topOpportunity.profit)}
+                    </div>
+                    <div className="text-sm font-medium text-foreground">
+                      {formatPercent(computed.topOpportunity.roi, 1)} ROI
+                    </div>
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Add item</h3>
-            <button
-              type="button"
-              onClick={() => {
-                setSkin("AWP | Asiimov");
-                setPurchasePrice("100");
-                setCurrentPrice("120");
-                setQuantity("1");
-              }}
-              className="text-xs px-3 py-1 rounded border border-muted-foreground text-muted-foreground hover:border-foreground hover:text-foreground transition"
-            >
-              Try example
-            </button>
+                <div className="mt-6 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Buy-in
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-foreground">
+                      {formatCurrency(computed.topOpportunity.purchasePrice)}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Current price
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-foreground">
+                      {formatCurrency(computed.topOpportunity.currentPrice)}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Quantity
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-foreground">
+                      {computed.topOpportunity.quantity}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Position value
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-foreground">
+                      {formatCurrency(computed.topOpportunity.value)}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                    Profit ready
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground">
+                    Sell these first
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Highest-profit positions in your inventory right now.
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {computed.profitableRows.length === 0 ? (
+                    <div className="rounded-xl border border-border/60 bg-background/20 p-4 text-sm text-muted-foreground">
+                      No profitable sell opportunities right now. Your tracked items are better held for now.
+                    </div>
+                  ) : (
+                    computed.profitableRows.slice(0, 6).map((row) => {
+                      const recommendation = getSellRecommendation(row);
+
+                      return (
+                        <article
+                          key={row.id}
+                          className="rounded-xl border border-border/60 bg-background/20 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <h4 className="font-semibold text-foreground">{row.skin}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Bought at {formatCurrency(row.purchasePrice)} · now {formatCurrency(row.currentPrice)}
+                              </p>
+                            </div>
+                            <div
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${recommendation.className}`}
+                            >
+                              {recommendation.label}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex items-end justify-between gap-4">
+                            <div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Profit
+                              </div>
+                              <div className="mt-1 text-2xl font-bold text-emerald-400">
+                                {formatCurrency(row.profit)}
+                              </div>
+                            </div>
+
+                            <div className="text-right text-sm">
+                              <div className="font-semibold text-foreground">
+                                {formatPercent(row.roi, 1)} ROI
+                              </div>
+                              <div className="text-muted-foreground">
+                                Qty {row.quantity} · Value {formatCurrency(row.value)}
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Watchlist
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground">
+                    Hold these for now
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Items that are not yet at a strong sell point.
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {computed.holdRows.length === 0 ? (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-300">
+                      Everything in your inventory is currently in profit.
+                    </div>
+                  ) : (
+                    computed.holdRows.slice(0, 6).map((row) => (
+                      <article
+                        key={row.id}
+                        className="rounded-xl border border-border/60 bg-background/20 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <h4 className="font-semibold text-foreground">{row.skin}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Bought at {formatCurrency(row.purchasePrice)} · now {formatCurrency(row.currentPrice)}
+                            </p>
+                          </div>
+                          <div className="rounded-full border border-border/60 px-3 py-1 text-xs font-semibold text-muted-foreground">
+                            Hold
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-end justify-between gap-4">
+                          <div>
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Profit
+                            </div>
+                            <div
+                              className={`mt-1 text-2xl font-bold ${
+                                row.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                              }`}
+                            >
+                              {formatCurrency(row.profit)}
+                            </div>
+                          </div>
+
+                          <div className="text-right text-sm">
+                            <div className="font-semibold text-foreground">
+                              {formatPercent(row.roi, 1)} ROI
+                            </div>
+                            <div className="text-muted-foreground">
+                              Qty {row.quantity} · Value {formatCurrency(row.value)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex justify-end">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => {
+                              setDeletingId(row.id);
+                              try {
+                                await apiFetch(`/api/inventory/${row.id}`, {
+                                  method: "DELETE",
+                                });
+                                toast({ title: "Item deleted" });
+                                await refresh();
+                              } catch (err: any) {
+                                toast({
+                                  title: "Could not delete item",
+                                  description: err?.message || "Unknown error",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setDeletingId(null);
+                              }
+                            }}
+                            disabled={deletingId === row.id}
+                          >
+                            {deletingId === row.id ? "Deleting..." : "Delete"}
+                          </Button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                  Portfolio signal
+                </div>
+                <div className="mt-3 text-3xl font-bold text-foreground">
+                  {formatCurrency(computed.totalValue)}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Current tracked inventory value.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                  Sellable profit now
+                </div>
+                <div className="mt-3 text-3xl font-bold text-emerald-400">
+                  {formatCurrency(computed.totalPotentialProfit)}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Total profit currently available across profitable positions.
+                </p>
+              </div>
+            </section>
+          </>
+        )}
+
+        <section id="add-inventory-item" className="rounded-2xl border border-border bg-card p-6">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold text-foreground">Add inventory item</h3>
+            <p className="text-sm text-muted-foreground">
+              Use this only when you want to track another skin.
+            </p>
           </div>
+
           <form
-            className="grid gap-4 md:grid-cols-4"
+            className="mt-5 grid gap-4 md:grid-cols-4"
             onSubmit={async (e) => {
               e.preventDefault();
               setSaving(true);
+
               try {
                 const data = await apiFetch("/api/inventory", {
                   method: "POST",
@@ -303,47 +500,16 @@ export default function InventoryPage() {
                     skin,
                     purchasePrice: Number(purchasePrice),
                     currentPrice: Number(currentPrice),
-                    quantity: Number(quantity)
-                  })
+                    quantity: Number(quantity),
+                  }),
                 });
 
                 if (data === null) {
-                  if (DEV_MODE) {
-                    console.log("DEV MODE: skipping auth");
-
-                    const newItem = {
-                      id: Math.random().toString(),
-                      skin,
-                      purchasePrice: Number(purchasePrice),
-                      currentPrice: Number(currentPrice),
-                      quantity: Number(quantity),
-                      profit:
-                        (Number(currentPrice) - Number(purchasePrice)) * Number(quantity),
-                      roi:
-                        Number(purchasePrice) > 0
-                          ? ((Number(currentPrice) - Number(purchasePrice)) /
-                              Number(purchasePrice)) *
-                            100
-                          : 0,
-                      bestMarket: "Skinport"
-                    };
-
-                    setItems((prev) => [...prev, newItem]);
-
-                    setSkin("");
-                    setPurchasePrice("");
-                    setCurrentPrice("");
-                    setQuantity("1");
-
-                    setSaving(false);
-                    return;
-                  }
-
                   toast({
                     title: "Authentication required",
                     description: "You must be logged in to add items",
+                    variant: "destructive",
                   });
-                  setSaving(false);
                   return;
                 }
 
@@ -351,42 +517,13 @@ export default function InventoryPage() {
                 setPurchasePrice("");
                 setCurrentPrice("");
                 setQuantity("1");
-                toast({ title: "Inventory item added", description: `${(data as any).skin}` });
+                toast({ title: "Inventory item added", description: `${(data as { skin?: string }).skin ?? "Item"}` });
                 await refresh();
               } catch (err: any) {
-                // Handle 405 errors gracefully in demo mode
-                if (err?.message?.includes("405") || err?.message?.includes("Method Not Allowed")) {
-                  const newItem = {
-                    id: Math.random().toString(),
-                    skin,
-                    purchasePrice: Number(purchasePrice),
-                    currentPrice: Number(currentPrice),
-                    quantity: Number(quantity),
-                    profit:
-                      (Number(currentPrice) - Number(purchasePrice)) * Number(quantity),
-                    roi:
-                      Number(purchasePrice) > 0
-                        ? ((Number(currentPrice) - Number(purchasePrice)) /
-                            Number(purchasePrice)) *
-                          100
-                        : 0,
-                    bestMarket: "Skinport"
-                  };
-
-                  setItems((prev) => [...prev, newItem]);
-                  setSkin("");
-                  setPurchasePrice("");
-                  setCurrentPrice("");
-                  setQuantity("1");
-                  toast({ title: "Item added (demo mode)" });
-                  setSaving(false);
-                  return;
-                }
-
                 toast({
                   title: "Could not add item",
                   description: err?.message || "Unknown error",
-                  variant: "destructive"
+                  variant: "destructive",
                 });
               } finally {
                 setSaving(false);
@@ -442,177 +579,11 @@ export default function InventoryPage() {
 
             <div className="md:col-span-4">
               <Button type="submit" disabled={saving} className="w-full md:w-auto">
-                {saving ? "Saving…" : "Add item"}
+                {saving ? "Saving..." : "Add item"}
               </Button>
             </div>
           </form>
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        {loading && (
-          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-            Loading inventory…
-          </div>
-        )}
-
-        {computed.totals.bestSellOpportunity && (
-          <div className="rounded-xl border border-green-500/30 bg-card p-5">
-            <div className="mb-3 text-xs text-green-400">🔥 Best sell opportunity</div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <div className="text-sm text-muted-foreground">Skin</div>
-                <div className="mt-1 text-lg font-bold text-foreground">
-                  {computed.totals.bestSellOpportunity.skin}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Best Market</div>
-                <div className="mt-1">
-                  <Badge>{computed.totals.bestSellOpportunity.bestSell?.market}</Badge>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Sell Price</div>
-                <div className="mt-1 text-lg font-bold text-foreground">
-                  {formatCurrency(computed.totals.bestSellOpportunity.bestSell?.price || 0)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Profit</div>
-                <div
-                  className={`mt-1 text-lg font-bold ${
-                    (computed.totals.bestSellOpportunity.bestSell?.profit || 0) >= 0
-                      ? "text-emerald-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {formatCurrency(computed.totals.bestSellOpportunity.bestSell?.profit || 0)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">ROI</div>
-                <div className="mt-1 inline-flex rounded-full bg-green-500/20 px-3 py-1 text-sm font-semibold text-green-400">
-                  {formatPercent(computed.totals.bestSellOpportunity.bestSell?.roi || 0, 1)}
-                </div>
-              </div>
-              <div className="flex items-end">
-                <button className="w-full rounded-lg bg-green-500 py-2 font-semibold text-black hover:bg-green-400 transition">
-                  Sell now
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Items</h3>
-          
-          <div className="text-xs text-muted-foreground mb-3">
-            Showing profit and best selling option per item
-          </div>
-
-          {computed.rows.length === 0 && !loading ? (
-            <div className="text-sm text-muted-foreground text-center py-8">
-              <div>No items yet</div>
-              <div className="text-xs mt-2">Add one or try example to see profit analysis</div>
-            </div>
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-zinc-400">
-                  <tr>
-                    <th className="text-left p-2">Skin</th>
-                    <th className="text-right p-2">Purchase</th>
-                    <th className="text-right p-2">Current</th>
-                    <th className="text-right p-2">Qty</th>
-                    <th className="text-right p-2">Value</th>
-                    <th className="text-left p-2">Best Market</th>
-                    <th className="text-right p-2">Best Price</th>
-                    <th className="text-right p-2">Profit</th>
-                    <th className="text-right p-2">ROI (%)</th>
-                    <th className="text-right p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {computed.rows.map((it) => (
-                    <tr key={it.id} className="border-t border-zinc-800 hover:bg-muted/50 transition-colors">
-                      <td className="p-2">{it.skin}</td>
-                      <td className="p-2 text-right text-xs text-muted-foreground">{formatCurrency(it.purchasePrice)}</td>
-                      <td className="p-2 text-right text-xs text-muted-foreground">{formatCurrency(it.currentPrice)}</td>
-                      <td className="p-2 text-right text-xs text-muted-foreground">{it.quantity}</td>
-                      <td className="p-2 text-right text-xs text-muted-foreground font-semibold">
-                        {formatCurrency(it.value)}
-                      </td>
-                      <td
-                        className={`p-2 text-right text-lg font-bold ${
-                          it.profit >= 0 ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      >
-                        {formatCurrency(it.profit)}
-                      </td>
-                      <td className="p-2 text-right">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            it.roi >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
-                          }`}
-                        >
-                          {formatPercent(it.roi, 1)}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <Badge variant="secondary">{it.bestMarket}</Badge>
-                      </td>
-                      <td className="p-2 text-right">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              const data = await apiFetch(`/api/inventory/${it.id}`, {
-                                method: "DELETE"
-                              });
-
-                              if (data === null) {
-                                if (DEV_MODE) {
-                                  console.log("DEV MODE: deleting item locally");
-                                  setItems((prev) => prev.filter((item) => item.id !== it.id));
-                                  toast({ title: "Item deleted" });
-                                  return;
-                                }
-
-                                toast({
-                                  title: "Authentication required",
-                                  description: "Your session expired or you are not logged in.",
-                                  variant: "destructive"
-                                });
-                                return;
-                              }
-                              toast({ title: "Item deleted" });
-                              await refresh();
-                            } catch (err: any) {
-                              toast({
-                                title: "Could not delete item",
-                                description: err?.message || "Unknown error",
-                                variant: "destructive"
-                              });
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        </section>
       </div>
     </DashboardLayout>
   );

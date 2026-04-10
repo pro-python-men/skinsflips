@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 
@@ -8,7 +9,7 @@ import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
-  const nextPath = searchParams.get("next") || "/dashboard"
+  const nextPath = "/dashboard"
   const error = searchParams.get("error")
   const hasHandledSteamLogin = useRef(false)
   const [email, setEmail] = useState("")
@@ -95,8 +96,18 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-lg">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary">
-            <span className="text-2xl font-bold text-primary-foreground">CS</span>
+          <div className="mb-6 flex items-center justify-center">
+            <div className="rounded-2xl bg-gradient-to-br from-green-500/10 to-transparent p-2">
+              <div className="overflow-hidden rounded-xl border border-white/10 shadow-lg shadow-black/30">
+                <Image
+                  src="/logo.png"
+                  alt="SkinFlip logo"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 object-cover"
+                />
+              </div>
+            </div>
           </div>
           <h1 className="mb-2 text-2xl font-bold text-foreground">
             CS2 Skin Flipper

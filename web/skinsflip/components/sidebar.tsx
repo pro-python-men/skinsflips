@@ -5,10 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-  LayoutDashboard,
   Package,
-  History,
-  Settings,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
@@ -21,11 +18,8 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Best Flips", icon: TrendingUp },
   { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/best-flips", label: "Best Flips", icon: TrendingUp },
-  { href: "/history", label: "Flip History", icon: History },
-  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
