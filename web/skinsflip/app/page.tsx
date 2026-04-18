@@ -131,89 +131,42 @@ export default function HomePage() {
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="grid gap-8 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start lg:gap-10 lg:py-14">
-          <div className="space-y-6">
-            <div className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-              Based on real sales data
+        <section className="relative overflow-hidden rounded-[2rem] bg-[url('/awp-hero.png')] bg-cover bg-[72%_center] bg-no-repeat py-16 sm:py-18 lg:min-h-[64vh] lg:py-20">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0.82)_30%,rgba(0,0,0,0.52)_56%,rgba(0,0,0,0.12)_100%)]" />
+
+          <div className="relative mx-auto flex min-h-[440px] max-w-[1240px] items-center px-6 sm:px-8 lg:min-h-[64vh] lg:px-10">
+            <div className="flex max-w-[560px] flex-col gap-6 lg:max-w-[600px]">
+              <div className="inline-flex w-fit items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                Based on real sales data
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <h1 className="text-4xl font-bold leading-[0.98] tracking-tight text-white sm:text-5xl lg:text-[4rem]">
+                  Find profitable CS2 skin flips in seconds
+                </h1>
+                <p className="text-sm font-medium text-green-400 sm:text-base">
+                  Average flips: $5-$25 profit per trade
+                </p>
+                <p className="max-w-[52ch] text-base leading-7 text-white/72 sm:text-lg">
+                  See exactly what to buy, where to buy it, and how much profit you’ll make — based on real sales data.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  onClick={goToDeals}
+                  className="h-14 rounded-xl bg-green-500 px-8 text-base font-semibold text-black shadow-[0_18px_50px_rgba(34,197,94,0.28)] transition hover:bg-green-600"
+                >
+                  Find profitable flips
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+
+                <p className="text-sm text-white/60">
+                  Powered by real marketplace data
+                </p>
+              </div>
             </div>
-
-            <div className="space-y-4">
-              <h1 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Find profitable CS2 skin flips in seconds
-              </h1>
-              <p className="text-sm font-medium text-green-400">
-                Average flips: $5-$25 profit per trade
-              </p>
-              <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                See exactly what to buy, where to buy it, and how much profit you’ll make — based on real sales data.
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              onClick={goToDeals}
-              className="rounded-xl bg-green-500 px-6 py-6 text-base font-semibold text-black transition hover:bg-green-600"
-            >
-              Find profitable flips
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-
-            <p className="text-sm text-muted-foreground">
-              Powered by real marketplace data
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                Live opportunities
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{updatedLabel}</p>
-            </div>
-
-            {loading ? (
-              <div className="grid gap-4">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="rounded-3xl border border-border bg-card p-6"
-                  >
-                    <div className="animate-pulse space-y-4">
-                      <div className="h-5 w-2/5 rounded bg-white/8" />
-                      <div className="h-12 w-1/3 rounded bg-green-500/12" />
-                      <div className="h-4 w-3/5 rounded bg-white/8" />
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="h-16 rounded-xl bg-white/6" />
-                        <div className="h-16 rounded-xl bg-white/6" />
-                      </div>
-                      <div className="h-12 rounded-xl bg-white/6" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="rounded-3xl border border-destructive/30 bg-card p-8 text-sm text-destructive">
-                {error}
-              </div>
-            ) : heroFlips.length === 0 ? (
-              <div className="rounded-2xl border border-border/70 bg-card px-5 py-4 text-sm text-muted-foreground">
-                No deals right now — new opportunities appear every few minutes
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {heroFlips.map((flip, index) => (
-                  <DealCard
-                    key={`hero-${flip.id}-${index}`}
-                    {...flip}
-                    variant="landing"
-                    featured={index === 0}
-                    isBest={index === 0}
-                    onTrack={goToDeals}
-                    onCardClick={goToDeals}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </section>
 
