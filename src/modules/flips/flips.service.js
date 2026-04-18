@@ -166,9 +166,9 @@ function clamp01(value) {
 }
 
 function liquidityScoreFromLabel(label) {
-  if (label === "high") return 1;
-  if (label === "medium") return 0.6;
-  return 0.2;
+  if (label === "HIGH") return 1;
+  if (label === "MEDIUM") return 0.7;
+  return 0.3;
 }
 
 function profitScoreFromPercent(profitPercent) {
@@ -185,15 +185,54 @@ function calculateConfidence({ profitPercent, liquidityLabel, stabilityScore }) 
 }
 
 function getEta(liquidity) {
-  if (liquidity === "high") return "Sells fast (1-2 days)";
-  if (liquidity === "medium") return "May take a few days";
-  return undefined;
+  if (liquidity === "HIGH") return "~2 days";
+  if (liquidity === "MEDIUM") return "~4 days";
+  if (liquidity === "LOW") return "~7 days";
+  return "~4 days";
 }
 
 function toUsdCents(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.round(n * 100);
+}
+
+function toOptionalUsdCents(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && !value.trim()) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
+function toOptionalPercent(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && !value.trim()) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function toOptionalBool(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value;
+  const s = String(value).trim().toLowerCase();
+  if (!s) return null;
+  if (s === "1" || s === "true" || s === "yes" || s === "y") return true;
+  if (s === "0" || s === "false" || s === "no" || s === "n") return false;
+  return null;
+}
+
+function minProfitCentsFromBudget(maxBuyCents) {
+  const budget = Number(maxBuyCents);
+  if (!Number.isFinite(budget) || budget <= 0) return 200;
+  // For low budgets, allow smaller absolute profit so deals can still appear.
+  // Examples:
+  //  - $20 budget -> max(50c, 2% of budget) = 50c
+  //  - $50 budget -> 2% => $1
+  //  - $100 budget -> 2% => $2 (default)
+  const twoPercent = Math.round(budget * 0.02);
+  return Math.min(200, Math.max(50, twoPercent));
 }
 
 function safeMedian(values) {
@@ -255,30 +294,80 @@ function pickSellFromSalesStats(stats) {
   if (median30 && vol30 > 0) return { sellUsd: median30, sourceWindow: "30d", ...base };
   if (median90 && vol90 > 0) return { sellUsd: median90, sourceWindow: "90d", ...base };
 
-  const avg7 = s7 && Number.isFinite(Number(s7.avg)) ? Number(s7.avg) : null;
-  const avg30 = s30 && Number.isFinite(Number(s30.avg)) ? Number(s30.avg) : null;
-  const avg90 = s90 && Number.isFinite(Number(s90.avg)) ? Number(s90.avg) : null;
-  if (avg7 && vol7 > 0) return { sellUsd: avg7, sourceWindow: "7d_avg", ...base };
-  if (avg30 && vol30 > 0) return { sellUsd: avg30, sourceWindow: "30d_avg", ...base };
-  if (avg90 && vol90 > 0) return { sellUsd: avg90, sourceWindow: "90d_avg", ...base };
-
   return null;
+}
+
+function windowStats(obj, key) {
+  const x = obj && typeof obj === "object" ? obj[key] : null;
+  return x && typeof x === "object" ? x : null;
+}
+
+function scoreSalesWindow(stats, windowKey) {
+  const w = windowStats(stats, windowKey);
+  if (!w) return { volume: 0, median: null };
+  const volume = Number.isFinite(Number(w.volume)) ? Number(w.volume) : 0;
+  const median = Number.isFinite(Number(w.median)) ? Number(w.median) : null;
+  return { volume, median };
+}
+
+function bestRowForWindow(rows, windowKey) {
+  let best = null;
+  let bestVol = -1;
+  let bestMed = -1;
+
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const { volume, median } = scoreSalesWindow(r, windowKey);
+    if (!median || volume <= 0) continue;
+
+    if (volume > bestVol) {
+      best = r;
+      bestVol = volume;
+      bestMed = Number(median);
+      continue;
+    }
+
+    if (volume === bestVol && Number(median) > bestMed) {
+      best = r;
+      bestVol = volume;
+      bestMed = Number(median);
+    }
+  }
+
+  return best;
+}
+
+function mergeSalesHistoryRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length === 0) return null;
+
+  const any = list[0];
+  const best7 = bestRowForWindow(list, "last_7_days");
+  const best30 = bestRowForWindow(list, "last_30_days");
+  const best90 = bestRowForWindow(list, "last_90_days");
+
+  return {
+    market_hash_name: any?.market_hash_name,
+    currency: any?.currency,
+    last_7_days: best7?.last_7_days ?? { min: null, max: null, avg: null, median: null, volume: 0 },
+    last_30_days: best30?.last_30_days ?? { min: null, max: null, avg: null, median: null, volume: 0 },
+    last_90_days: best90?.last_90_days ?? { min: null, max: null, avg: null, median: null, volume: 0 }
+  };
 }
 
 function stabilityScoreFromSalesStats(stats) {
   const s = stats && typeof stats === "object" ? stats : null;
-  if (!s) return 0.7;
+  if (!s) return 0.6;
 
   const s7 = s.last_7_days && typeof s.last_7_days === "object" ? s.last_7_days : null;
   const s30 = s.last_30_days && typeof s.last_30_days === "object" ? s.last_30_days : null;
   const pref = s7 && Number(s7.volume) > 0 ? s7 : s30;
-  if (!pref) return 0.7;
+  if (!pref) return 0.6;
 
   const median = Number(pref.median);
   const min = Number(pref.min);
   const max = Number(pref.max);
-  if (!Number.isFinite(median) || median <= 0) return 0.7;
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return 0.7;
+  if (!Number.isFinite(median) || median <= 0) return 0.6;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return 0.6;
 
   const spreadRatio = (max - min) / median;
   const score = 1 - spreadRatio / 0.5;
@@ -287,11 +376,14 @@ function stabilityScoreFromSalesStats(stats) {
 
 function liquidityLabelFromSalesOrListings({ salesLast7d, listingCount }) {
   const sales = Number(salesLast7d) || 0;
-  if (sales > 20) return "high";
-  if (sales > 5) return "medium";
+  if (sales > 20) return "HIGH";
+  if (sales > 5) return "MEDIUM";
 
   const lc = Number.isFinite(Number(listingCount)) ? Number(listingCount) : 0;
-  return getLiquidityLabel(lc);
+  const base = getLiquidityLabel(lc);
+  if (base === "high") return "HIGH";
+  if (base === "medium") return "MEDIUM";
+  return "LOW";
 }
 
 function buildOpportunity({
@@ -302,6 +394,10 @@ function buildOpportunity({
   buyCents,
   sellCents,
   sellFeeRate,
+  maxBuyCents,
+  minProfitCents,
+  minProfitPercent,
+  includeLowLiquidity,
   salesLast7d,
   salesLast30d,
   stabilityScore,
@@ -310,21 +406,33 @@ function buildOpportunity({
 }) {
   const debug = typeof debugSink === "function" ? debugSink : null;
   if (!buyCents || !sellCents || buyCents <= 0 || sellCents <= 0) return null;
+  if (maxBuyCents && Number(buyCents) > Number(maxBuyCents)) {
+    if (debug) debug("buy_gt_budget");
+    return null;
+  }
 
-  const netSell = sellCents - feeCents(sellCents, sellFeeRate, "ceil");
-  const profitCents = netSell - buyCents;
+  const netSellCents = sellCents - feeCents(sellCents, sellFeeRate, "ceil");
+  const profitCents = netSellCents - buyCents;
   if (profitCents <= 0) {
     if (debug) debug("profit_non_positive");
     return null;
   }
 
   const profitPercent = (profitCents / buyCents) * 100;
-  if (profitPercent < 5) {
-    if (debug) debug("profit_percent_lt_5");
+  const requiredProfitPercent =
+    Number.isFinite(Number(minProfitPercent)) && Number(minProfitPercent) > 0
+      ? Number(minProfitPercent)
+      : 5;
+  if (profitPercent < requiredProfitPercent) {
+    if (debug) debug(`profit_percent_lt_${requiredProfitPercent}`);
     return null;
   }
-  if (profitCents < 200) {
-    if (debug) debug("profit_lt_2usd");
+  const requiredProfitCents =
+    Number.isFinite(Number(minProfitCents)) && Number(minProfitCents) > 0
+      ? Number(minProfitCents)
+      : 200;
+  if (profitCents < requiredProfitCents) {
+    if (debug) debug("profit_lt_min_usd");
     return null;
   }
 
@@ -337,7 +445,8 @@ function buildOpportunity({
     listingCount: normalizedListingCount ?? 0
   });
 
-  if (liquidity === "low") {
+  const allowLow = includeLowLiquidity === true;
+  if (!allowLow && liquidity === "LOW") {
     if (debug) debug("liquidity_low");
     return null;
   }
@@ -347,18 +456,16 @@ function buildOpportunity({
     liquidityLabel: liquidity,
     stabilityScore
   });
-  if (confidence < 50) {
-    if (debug) debug("confidence_lt_50");
-    return null;
-  }
 
   const rankScore = (profitCents / 100) * confidence;
 
   return {
     id: `${sourceBuy}->${sourceSell}:${name}`,
+    itemName: name,
     name,
     buyPrice: buyCents / 100,
     sellPrice: sellCents / 100,
+    netSell: netSellCents / 100,
     profit: profitCents / 100,
     profitPercent,
     roi: profitPercent,
@@ -397,7 +504,7 @@ function computeProfitAfterSellFee({ buyUsd, sellUsd, sellSource }) {
   return profitCents / 100;
 }
 
-let cache = { at: 0, data: null };
+const bestFlipsCache = new Map();
 const CACHE_MS = 5 * 60_000;
 
 const csfloatResponseCache = new Map();
@@ -405,6 +512,10 @@ const CSFLOAT_CACHE_MS = 2 * 60_000;
 let lastCsfloatRateLimitWarnAt = 0;
 const CSFLOAT_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 let csfloatBlockedUntil = 0;
+
+function csfloatResult(data, meta) {
+  return { data, meta };
+}
 
 function csfloatCacheKey(params) {
   const sortBy = typeof params?.sortBy === "string" ? params.sortBy : "";
@@ -419,21 +530,40 @@ async function fetchCsfloatListingsCached(params, { allowStaleOn429 = true } = {
   const key = csfloatCacheKey(params);
   const now = Date.now();
   const cached = csfloatResponseCache.get(key) || null;
-  if (cached && now - cached.at < CSFLOAT_CACHE_MS) return cached.data;
+  if (cached && now - cached.at < CSFLOAT_CACHE_MS) {
+    return csfloatResult(cached.data, {
+      isCached: true,
+      rateLimited: false,
+      lastUpdated: cached.at || null
+    });
+  }
   if (now < csfloatBlockedUntil) {
-    if (cached && cached.data) return cached.data;
-    return { data: [], cursor: null };
+    if (cached && cached.data) {
+      return csfloatResult(cached.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: cached.at || null
+      });
+    }
+    return csfloatResult(
+      { data: [], cursor: null },
+      { isCached: false, rateLimited: true, lastUpdated: null }
+    );
   }
 
   try {
     const data = await fetchCsfloatListings(params);
     csfloatResponseCache.set(key, { at: now, data });
-    return data;
+    return csfloatResult(data, { isCached: false, rateLimited: false, lastUpdated: now });
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
     const is429 = msg.includes("HTTP 429") || msg.toLowerCase().includes("too many requests");
     if (allowStaleOn429 && is429 && cached && cached.data) {
-      return cached.data;
+      return csfloatResult(cached.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: cached.at || null
+      });
     }
     if (is429) {
       csfloatBlockedUntil = Date.now() + CSFLOAT_RATE_LIMIT_COOLDOWN_MS;
@@ -441,15 +571,39 @@ async function fetchCsfloatListingsCached(params, { allowStaleOn429 = true } = {
         lastCsfloatRateLimitWarnAt = Date.now();
         console.warn("[csfloat] rate limited - returning empty result");
       }
-      return { data: [], cursor: null };
+      return csfloatResult(
+        { data: [], cursor: null },
+        { isCached: false, rateLimited: true, lastUpdated: null }
+      );
     }
     throw e;
   }
 }
 
-export async function getBestFlipsReal() {
+export async function getBestFlipsReal({
+  maxBuyPrice,
+  minProfitUsd,
+  minProfitPercent,
+  includeLowLiquidity
+} = {}) {
   const now = Date.now();
-  if (cache.data && now - cache.at < CACHE_MS) return cache.data;
+  const maxBuyCents = toOptionalUsdCents(maxBuyPrice);
+  const includeLow = toOptionalBool(includeLowLiquidity) === true;
+  const requestedMinProfitCents = toOptionalUsdCents(minProfitUsd);
+  const requiredMinProfitCents =
+    requestedMinProfitCents ?? (maxBuyCents ? minProfitCentsFromBudget(maxBuyCents) : 200);
+  const requiredMinProfitPercent = toOptionalPercent(minProfitPercent) ?? 5;
+
+  const cacheKey = JSON.stringify({
+    maxBuyCents: maxBuyCents || null,
+    minProfitCents: requiredMinProfitCents,
+    minProfitPercent: requiredMinProfitPercent,
+    includeLowLiquidity: includeLow
+  });
+  const cached = bestFlipsCache.get(cacheKey) || null;
+  if (cached && cached.data && now - cached.at < CACHE_MS) {
+    return { flips: cached.data, isCached: false, lastUpdated: cached.at };
+  }
 
   try {
     const limit = Number(process.env.BEST_FLIPS_LIMIT || 50);
@@ -475,7 +629,7 @@ export async function getBestFlipsReal() {
     );
     const minSales7d = Number(process.env.BEST_FLIPS_MIN_SALES_7D || 0);
 
-    const enableSkinportBuy = String(process.env.BEST_FLIPS_ENABLE_SKINPORT_BUY || "1") !== "0";
+    const enableSkinportBuy = String(process.env.BEST_FLIPS_ENABLE_SKINPORT_BUY || "0") !== "0";
     const enableCsfloatBuy = String(process.env.BEST_FLIPS_ENABLE_CSFLOAT_BUY || "1") !== "0";
     const debug = String(process.env.BEST_FLIPS_DEBUG || "").trim() === "1";
 
@@ -502,17 +656,21 @@ export async function getBestFlipsReal() {
     const skinportItemsPromise = fetchSkinportItems({ appId: 730, currency: "USD", tradable: 1 });
     const csfloatBestDealBuyByName = new Map();
     let csfloatRows = [];
+    let rateLimitedHit = false;
+    const scanSortBy = maxBuyCents ? "lowest_price" : "best_deal";
 
     if (enableCsfloatBuy) {
       let cursor = null;
       for (let page = 0; page < csfloatPages; page += 1) {
-        const resp = await fetchCsfloatListingsCached({
+        const respWrap = await fetchCsfloatListingsCached({
           limit: csfloatScanLimit,
-          sortBy: "best_deal",
+          sortBy: scanSortBy,
           type: "buy_now",
           cursor: cursor || undefined
         });
 
+        if (respWrap?.meta?.rateLimited) rateLimitedHit = true;
+        const resp = respWrap?.data || null;
         const rows = Array.isArray(resp?.data) ? resp.data : [];
         csfloatRows = csfloatRows.concat(rows);
 
@@ -521,6 +679,14 @@ export async function getBestFlipsReal() {
           const priceCents = Number(row?.price);
           if (typeof name !== "string" || !name) continue;
           if (!Number.isFinite(priceCents) || priceCents <= 0) continue;
+          if (maxBuyCents && priceCents > maxBuyCents) {
+            // When scanning `lowest_price` we can stop early once we exceed budget.
+            if (scanSortBy === "lowest_price") {
+              cursor = null;
+              break;
+            }
+            continue;
+          }
 
           const prev = csfloatBestDealBuyByName.get(name);
           if (prev === undefined || priceCents < prev)
@@ -537,7 +703,9 @@ export async function getBestFlipsReal() {
       }
     }
 
-    const skinportItems = await skinportItemsPromise;
+    const skinportItemsWrap = await skinportItemsPromise;
+    if (skinportItemsWrap?.meta?.rateLimited) rateLimitedHit = true;
+    const skinportItems = Array.isArray(skinportItemsWrap?.data) ? skinportItemsWrap.data : [];
 
   const itemsByName = new Map();
   for (const it of Array.isArray(skinportItems) ? skinportItems : []) {
@@ -550,12 +718,14 @@ export async function getBestFlipsReal() {
   const skinportSalesHistory = [];
   for (let i = 0; i < marketHashNames.length; i += 50) {
     const chunk = marketHashNames.slice(i, i + 50);
-    const part = await fetchSkinportSalesHistory({
+    const partWrap = await fetchSkinportSalesHistory({
       appId: 730,
       currency: "USD",
       marketHashNames: chunk
     });
-    if (Array.isArray(part)) skinportSalesHistory.push(...part);
+    if (partWrap?.meta?.rateLimited) rateLimitedHit = true;
+    const part = Array.isArray(partWrap?.data) ? partWrap.data : [];
+    skinportSalesHistory.push(...part);
   }
   if (debug) {
     console.log("[best-flips] items:", itemsByName.size);
@@ -568,11 +738,18 @@ export async function getBestFlipsReal() {
     );
   }
 
-  const salesByName = new Map();
+  const salesRowsByName = new Map();
   for (const row of Array.isArray(skinportSalesHistory) ? skinportSalesHistory : []) {
     const name = row?.market_hash_name;
     if (typeof name !== "string" || !name) continue;
-    salesByName.set(name, row);
+    if (!salesRowsByName.has(name)) salesRowsByName.set(name, []);
+    salesRowsByName.get(name).push(row);
+  }
+
+  const salesByName = new Map();
+  for (const [name, rows] of salesRowsByName.entries()) {
+    const merged = mergeSalesHistoryRows(rows);
+    if (merged) salesByName.set(name, merged);
   }
 
     const out = [];
@@ -600,6 +777,10 @@ export async function getBestFlipsReal() {
         buyCents: skinportBuyCents,
         sellCents,
         sellFeeRate: skinportSellFeeRateForSellCents(sellCents),
+        maxBuyCents,
+        minProfitCents: requiredMinProfitCents,
+        minProfitPercent: requiredMinProfitPercent,
+        includeLowLiquidity: includeLow,
         listingCount,
         sourceBuy: "Skinport",
         sourceSell: "Skinport",
@@ -616,6 +797,10 @@ export async function getBestFlipsReal() {
 
     const quickBuyCents = csfloatBestDealBuyByName.get(name);
     if (!Number.isFinite(Number(quickBuyCents)) || Number(quickBuyCents) <= 0) continue;
+    if (maxBuyCents && Number(quickBuyCents) > Number(maxBuyCents)) {
+      if (debug) debugHit("CSFloat->Skinport:buy_gt_budget");
+      continue;
+    }
 
     // Pre-filter: only bother fetching per-item lowest listings if there's a chance it passes profit filters.
     const quickNetSell = sellCents - feeCents(sellCents, skinportSellFeeRateForSellCents(sellCents), "ceil");
@@ -659,12 +844,14 @@ export async function getBestFlipsReal() {
     let perItemListings = null;
     try {
       csfloatPerItemFetches += 1;
-      perItemListings = await fetchCsfloatListingsCached({
-        limit: 3,
+      const perItemWrap = await fetchCsfloatListingsCached({
+        limit: 5,
         sortBy: "lowest_price",
         type: "buy_now",
         marketHashName: name
       });
+      if (perItemWrap?.meta?.rateLimited) rateLimitedHit = true;
+      perItemListings = perItemWrap?.data || null;
     } catch {
       perItemListings = null;
     }
@@ -673,12 +860,16 @@ export async function getBestFlipsReal() {
       .map((r) => Number(r?.price))
       .filter((v) => Number.isFinite(v) && v > 0);
 
-    const csfloatBuyCents = averageLowestListings(csfloatPrices, 3);
+    const csfloatBuyCents = csfloatPrices.length > 0 ? Math.min(...csfloatPrices) : null;
     const csfloatDeal = buildOpportunity({
       name,
       buyCents: csfloatBuyCents,
       sellCents: row.sellCents,
       sellFeeRate: skinportSellFeeRateForSellCents(row.sellCents),
+      maxBuyCents,
+      minProfitCents: requiredMinProfitCents,
+      minProfitPercent: requiredMinProfitPercent,
+      includeLowLiquidity: includeLow,
       listingCount: row.listingCount,
       sourceBuy: "CSFloat",
       sourceSell: "Skinport",
@@ -702,17 +893,21 @@ export async function getBestFlipsReal() {
     }
   }
 
-    out.sort((x, y) => {
+  out.sort((x, y) => {
     const rankX = Number(x.profit) * Number(x.confidence);
     const rankY = Number(y.profit) * Number(y.confidence);
     if (rankY !== rankX) return rankY - rankX;
     if (y.profit !== x.profit) return y.profit - x.profit;
     return y.confidence - x.confidence;
   });
-    const sliced = out.slice(0, Number.isFinite(limit) ? limit : 50);
+  const sliced = out.slice(0, Number.isFinite(limit) ? limit : 50);
 
-    cache = { at: now, data: sliced };
-    return sliced;
+  if (rateLimitedHit && cached && cached.data) {
+    return { flips: cached.data, isCached: true, lastUpdated: cached.at };
+  }
+
+  bestFlipsCache.set(cacheKey, { at: now, data: sliced });
+  return { flips: sliced, isCached: false, lastUpdated: now };
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
     const is429 =
@@ -720,8 +915,8 @@ export async function getBestFlipsReal() {
       msg.toLowerCase().includes("too many requests") ||
       msg.toLowerCase().includes("rate limited");
 
-    if (cache.data) return cache.data;
-    if (is429) return [];
+    if (cached && cached.data) return { flips: cached.data, isCached: true, lastUpdated: cached.at };
+    if (is429) return { flips: [], isCached: true, lastUpdated: null };
     throw e;
   }
 }

@@ -1,8 +1,10 @@
 export type Flip = {
   id: string
+  itemName?: string
   name: string
   buyPrice: number
   sellPrice: number
+  netSell?: number
   profit: number
   roi: number
   profitPercent?: number
@@ -11,6 +13,7 @@ export type Flip = {
   sourceSell: string
   listingCount?: number
   liquidity?: "high" | "medium" | "low"
+  liquidityTier?: "HIGH" | "MEDIUM" | "LOW"
   confidence?: number
   eta?: string
   sellWindow?: string
@@ -18,5 +21,11 @@ export type Flip = {
   salesLast30d?: number
   stabilityScore?: number
   createdAt?: string
+}
+
+export type BestFlipsResponse = {
+  flips: Flip[]
+  isCached: boolean
+  lastUpdated: number | null
 }
 

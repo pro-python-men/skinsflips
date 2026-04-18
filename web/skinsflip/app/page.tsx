@@ -5,7 +5,7 @@ import { ArrowRight, DollarSign, Search, TrendingUp } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/api"
-import type { Flip } from "@/lib/types/flip"
+import type { BestFlipsResponse, Flip } from "@/lib/types/flip"
 
 type AuthUser = {
   id?: number
@@ -66,9 +66,20 @@ export default function HomePage() {
 
         setUser((authData as { user?: AuthUser | null } | null)?.user ?? null)
 
-        const safeFlips = Array.isArray(flipsData) ? (flipsData as Flip[]) : []
+        const payload = flipsData as BestFlipsResponse | Flip[] | null
+        const safeFlips = Array.isArray(payload)
+          ? (payload as Flip[])
+          : Array.isArray((payload as BestFlipsResponse | null)?.flips)
+            ? ((payload as BestFlipsResponse).flips as Flip[])
+            : []
+
+        const lastUpdated =
+          !Array.isArray(payload) && typeof (payload as any)?.lastUpdated === "number"
+            ? Number((payload as any).lastUpdated)
+            : Date.now()
+
         setFlips(safeFlips)
-        setLastUpdatedAt(Date.now())
+        setLastUpdatedAt(lastUpdated)
       } catch (e: any) {
         setError(e?.message || "Failed to load live deals")
       } finally {

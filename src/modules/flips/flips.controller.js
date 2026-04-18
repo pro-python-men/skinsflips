@@ -119,8 +119,27 @@ export const markFlipAsCompleted = asyncHandler(async (req, res) => {
   res.json(formatTrackedFlip(flip));
 });
 
-export const getBestFlips = asyncHandler(async (_req, res) => {
-  const data = await getBestFlipsReal();
+export const getBestFlips = asyncHandler(async (req, res) => {
+  const maxBuyPrice =
+    req?.query && typeof req.query.maxBuyPrice === "string" ? req.query.maxBuyPrice : undefined;
+
+  const minProfitUsd =
+    req?.query && typeof req.query.minProfitUsd === "string" ? req.query.minProfitUsd : undefined;
+  const minProfitPercent =
+    req?.query && typeof req.query.minProfitPercent === "string"
+      ? req.query.minProfitPercent
+      : undefined;
+  const includeLowLiquidity =
+    req?.query && typeof req.query.includeLowLiquidity === "string"
+      ? req.query.includeLowLiquidity
+      : undefined;
+
+  const data = await getBestFlipsReal({
+    maxBuyPrice,
+    minProfitUsd,
+    minProfitPercent,
+    includeLowLiquidity
+  });
   res.json(data);
 });
 

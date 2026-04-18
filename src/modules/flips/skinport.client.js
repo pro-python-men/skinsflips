@@ -23,6 +23,10 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function result(data, meta) {
+  return { data, meta };
+}
+
 function getJsonWithBrotli(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(
@@ -87,11 +91,21 @@ export async function fetchSkinportItems({ appId = 730, currency = "USD", tradab
   const now = Date.now();
   const key = url;
   if (now < itemsBlockedUntil) {
-    if (itemsCache.data && itemsCache.key === key) return itemsCache.data;
-    return [];
+    if (itemsCache.data && itemsCache.key === key) {
+      return result(itemsCache.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: itemsCache.at || null
+      });
+    }
+    return result([], { isCached: false, rateLimited: true, lastUpdated: null });
   }
   if (itemsCache.data && itemsCache.key === key && now - itemsCache.at < ITEMS_CACHE_MS) {
-    return itemsCache.data;
+    return result(itemsCache.data, {
+      isCached: true,
+      rateLimited: false,
+      lastUpdated: itemsCache.at || null
+    });
   }
 
   try {
@@ -99,15 +113,21 @@ export async function fetchSkinportItems({ appId = 730, currency = "USD", tradab
     itemsCache.at = now;
     itemsCache.key = key;
     itemsCache.data = data;
-    return data;
+    return result(data, { isCached: false, rateLimited: false, lastUpdated: now });
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
     const is429 = msg.includes("HTTP 429") || msg.toLowerCase().includes("rate limit");
     if (is429) {
       warnRateLimited("items");
       itemsBlockedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
-      if (itemsCache.data && itemsCache.key === key) return itemsCache.data;
-      return [];
+      if (itemsCache.data && itemsCache.key === key) {
+        return result(itemsCache.data, {
+          isCached: true,
+          rateLimited: true,
+          lastUpdated: itemsCache.at || null
+        });
+      }
+      return result([], { isCached: false, rateLimited: true, lastUpdated: null });
     }
     throw e;
   }
@@ -139,24 +159,42 @@ export async function fetchSkinportSalesHistory({
   const key = url;
   if (now < salesBlockedUntil) {
     const cached0 = salesCache.get(key) || null;
-    if (cached0 && cached0.data) return cached0.data;
-    return [];
+    if (cached0 && cached0.data) {
+      return result(cached0.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: cached0.at || null
+      });
+    }
+    return result([], { isCached: false, rateLimited: true, lastUpdated: null });
   }
   const cached = salesCache.get(key) || null;
-  if (cached && now - cached.at < SALES_CACHE_MS) return cached.data;
+  if (cached && now - cached.at < SALES_CACHE_MS) {
+    return result(cached.data, {
+      isCached: true,
+      rateLimited: false,
+      lastUpdated: cached.at || null
+    });
+  }
 
   try {
     const data = await getJsonWithRetries(url, { retries: 2 });
     salesCache.set(key, { at: now, data });
-    return data;
+    return result(data, { isCached: false, rateLimited: false, lastUpdated: now });
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
     const is429 = msg.includes("HTTP 429") || msg.toLowerCase().includes("rate limit");
     if (is429) {
       warnRateLimited("sales/history");
       salesBlockedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
-      if (cached && cached.data) return cached.data;
-      return [];
+      if (cached && cached.data) {
+        return result(cached.data, {
+          isCached: true,
+          rateLimited: true,
+          lastUpdated: cached.at || null
+        });
+      }
+      return result([], { isCached: false, rateLimited: true, lastUpdated: null });
     }
     throw e;
   }
