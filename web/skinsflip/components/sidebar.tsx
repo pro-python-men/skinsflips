@@ -36,11 +36,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center">
             <Image
-              src="/logostrona.png"
+              src="/stronka.png"
               alt="CS Skin Flipper logo"
               width={160}
               height={40}
-              className="object-contain"
+              className="h-9 w-auto object-contain lg:h-10"
             />
           </Link>
         )}

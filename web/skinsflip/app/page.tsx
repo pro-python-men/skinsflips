@@ -107,26 +107,28 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 lg:px-10 lg:py-4">
+        <div className="mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between px-6 lg:px-10">
           <a href="/" className="flex items-center">
             <img
-              src="/logostrona.png"
+              src="/stronka.png"
               alt="SkinFlip logo"
-              className="h-[46px] w-auto object-contain sm:h-[54px] lg:h-[60px]"
+              className="h-9 w-auto object-contain lg:h-10"
             />
           </a>
 
-          <a
-            href="/login"
-            className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:scale-105 hover:bg-white/10"
-          >
-            <img
-              src="/steam.png"
-              alt=""
-              className="h-6 w-6 object-contain"
-            />
-            Login with Steam
-          </a>
+          <div className="flex items-center">
+            <a
+              href="/login"
+              className="flex items-center gap-4 rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:scale-105 hover:bg-white/10"
+            >
+              <img
+                src="/steam.png"
+                alt=""
+                className="h-7 w-7 object-contain lg:h-8 lg:w-8"
+              />
+              Login with Steam
+            </a>
+          </div>
         </div>
       </header>
 
