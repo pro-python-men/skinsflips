@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import {
   Package,
   TrendingUp,
+  History,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Best Flips", icon: TrendingUp },
+  { href: "/history", label: "Tracking", icon: History },
   { href: "/inventory", label: "Inventory", icon: Package },
 ]
 

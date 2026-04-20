@@ -29,6 +29,7 @@ router.get("/health", (req, res) => {
     uptime: process.uptime()
   });
 });
+router.get("/public/flips/best", getBestFlips);
 
 router.use(["/flips", "/stats", "/inventory", "/users"], requireAuth);
 router.get("/flips/best", getBestFlips);

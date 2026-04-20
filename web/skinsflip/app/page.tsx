@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { ArrowRight, DollarSign, Search, TrendingUp } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import type { BestFlipsResponse, Flip } from "@/lib/types/flip"
 
@@ -37,9 +39,12 @@ const steps = [
 ]
 
 export default function HomePage() {
+  const router = useRouter()
   const updateIntervalMs = 15000
   const [user, setUser] = useState<AuthUser | null>(null)
   const [flips, setFlips] = useState<Flip[]>([])
+  const [trackedIds, setTrackedIds] = useState<Record<string, boolean>>({})
+  const [trackingIds, setTrackingIds] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
@@ -51,6 +56,58 @@ export default function HomePage() {
 
   const goToDeals = () => {
     window.location.href = destination
+  }
+
+  const getBuyHref = (flip: Flip) => {
+    const source = String(flip.sourceBuy || "").toLowerCase()
+
+    if (source.includes("csfloat")) return "https://csfloat.com/"
+    if (source.includes("skinport")) return "https://skinport.com/market"
+
+    return null
+  }
+
+  const trackFlip = async (flip: Flip) => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    if (trackingIds[flip.id] || trackedIds[flip.id]) return
+
+    setTrackingIds((current) => ({ ...current, [flip.id]: true }))
+
+    try {
+      await apiFetch("/api/flips/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skinName: flip.itemName ?? flip.name,
+          buyPrice: flip.buyPrice,
+          sellPriceExpected: flip.sellPrice,
+          sourceBuy: flip.sourceBuy,
+          sourceSell: flip.sourceSell,
+        }),
+      })
+
+      setTrackedIds((current) => ({ ...current, [flip.id]: true }))
+      toast({
+        title: "Tracking this opportunity",
+        description: `${flip.name} is now in Tracking.`,
+      })
+    } catch (e: any) {
+      toast({
+        title: "Could not track flip",
+        description: e?.message || "Unknown error",
+        variant: "destructive",
+      })
+    } finally {
+      setTrackingIds((current) => {
+        const next = { ...current }
+        delete next[flip.id]
+        return next
+      })
+    }
   }
 
   useEffect(() => {
@@ -178,19 +235,11 @@ export default function HomePage() {
             <p className="mt-1 text-sm text-muted-foreground">{updatedLabel}</p>
           </div>
 
-          {loading ? (
-            <div className="rounded-3xl border border-border bg-card p-8 text-sm text-muted-foreground">
-              Loading live deals...
-            </div>
-          ) : error ? (
-            <div className="rounded-3xl border border-destructive/30 bg-card p-8 text-sm text-destructive">
-              {error}
-            </div>
-          ) : liveFlips.length === 0 ? (
-            <div className="rounded-3xl border border-border bg-card p-8 text-center">
-              <p className="text-lg font-semibold text-foreground">No profitable deals right now</p>
+          {loading || error || liveFlips.length === 0 ? (
+            <div className="rounded-3xl border border-border bg-card p-8">
+              <p className="text-lg font-semibold text-foreground">Scanning market for new opportunities...</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                This is normal - profitable opportunities depend on real market conditions
+                Live flips update continuously as new profitable gaps are detected.
               </p>
             </div>
           ) : (
@@ -202,8 +251,13 @@ export default function HomePage() {
                   variant="landing"
                   featured={index === 0}
                   isBest={index === 0}
-                  onTrack={goToDeals}
-                  onCardClick={goToDeals}
+                  buyHref={getBuyHref(flip) ?? undefined}
+                  buyDisabled={!getBuyHref(flip)}
+                  onTrack={() => {
+                    void trackFlip(flip)
+                  }}
+                  isTracking={Boolean(trackingIds[flip.id])}
+                  isTracked={Boolean(trackedIds[flip.id])}
                 />
               ))}
             </div>

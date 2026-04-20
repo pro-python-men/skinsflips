@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/components/auth-context"
 import { apiFetch } from "@/lib/api"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -63,7 +64,45 @@ function HistorySummaryCard({
   )
 }
 
+function parseEtaDays(etaText: string | null | undefined) {
+  if (!etaText) return 7
+  const match = String(etaText).match(/(\d+)/)
+  if (!match) return 7
+  const value = Number(match[1])
+  return Number.isFinite(value) && value > 0 ? value : 7
+}
+
+function getTrackedProgress(flip: TrackedFlip) {
+  const totalDays = parseEtaDays((flip as TrackedFlip & { eta?: string }).eta)
+  const createdAtMs = new Date(flip.createdAt).getTime()
+  const nowMs = Date.now()
+  const elapsedDays = Math.max(0, Math.floor((nowMs - createdAtMs) / (1000 * 60 * 60 * 24)))
+  const dayInJourney = Math.min(totalDays, elapsedDays + 1)
+  const progressPercent = Math.min(100, Math.round((dayInJourney / totalDays) * 100))
+
+  if (elapsedDays >= totalDays) {
+    return {
+      badge: "Ready to sell",
+      helper: "Your expected sell window is here.",
+      progressLabel: `Day ${totalDays} / ${totalDays}`,
+      progressPercent: 100,
+      etaLabel: "Sell window reached",
+      tone: "ready" as const,
+    }
+  }
+
+  return {
+    badge: `Day ${dayInJourney} / ${totalDays}`,
+    helper: "Holding for the expected profit window.",
+    progressLabel: `${totalDays - elapsedDays} day${totalDays - elapsedDays === 1 ? "" : "s"} left`,
+    progressPercent,
+    etaLabel: `Estimated sell time: ~${totalDays} days`,
+    tone: "holding" as const,
+  }
+}
+
 export default function HistoryPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth()
   const [dateRange, setDateRange] = useState("All Time")
   const [weapon, setWeapon] = useState("All Weapons")
   const [profitFilter, setProfitFilter] = useState("All")
@@ -114,8 +153,9 @@ export default function HistoryPage() {
   }
 
   useEffect(() => {
+    if (isLoadingAuth || !isAuthenticated) return
     refresh()
-  }, [])
+  }, [isAuthenticated, isLoadingAuth])
 
   const filteredFlips = useMemo(() => {
     return flips.filter((flip) => {
@@ -218,7 +258,7 @@ export default function HistoryPage() {
     new Date(value ?? new Date().toISOString()).toLocaleDateString("pl-PL")
 
   return (
-    <DashboardLayout title="Flip History">
+    <DashboardLayout title="Tracking" requireAuth>
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <HistorySummaryCard
@@ -305,64 +345,97 @@ export default function HistoryPage() {
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
                   {activeFlips.map((flip) => (
-                    <article
-                      key={flip.id}
-                      className="rounded-xl border border-border bg-card p-6 transition hover:scale-[1.02]"
-                    >
-                      <div className="flex h-full flex-col gap-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-2">
-                            <h3 className="text-xl font-semibold text-foreground">{flip.skinName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Buy {formatCurrency(flip.buyPrice)} {"\u2192"} Expected Sell {formatCurrency(flip.sellPriceExpected)}
-                            </p>
+                    (() => {
+                      const progress = getTrackedProgress(flip)
+
+                      return (
+                        <article
+                          key={flip.id}
+                          className="rounded-xl border border-border bg-card p-6 transition hover:scale-[1.02]"
+                        >
+                          <div className="flex h-full flex-col gap-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-2">
+                                <h3 className="text-xl font-semibold text-foreground">{flip.skinName}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  Buy {formatCurrency(flip.buyPrice)} {"\u2192"} Expected Sell {formatCurrency(flip.sellPriceExpected)}
+                                </p>
+                              </div>
+
+                              <span
+                                className={[
+                                  "rounded-full px-3 py-1 text-xs font-medium",
+                                  progress.tone === "ready"
+                                    ? "bg-emerald-500/15 text-emerald-300"
+                                    : "bg-amber-500/10 text-amber-300",
+                                ].join(" ")}
+                              >
+                                {progress.badge}
+                              </span>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <p className="text-sm text-muted-foreground">Potential profit</p>
+                                <p className="mt-2 text-3xl font-bold text-emerald-400">
+                                  {flip.profitExpected >= 0 ? "+" : ""}
+                                  {formatCurrency(flip.profitExpected)}
+                                </p>
+                                <p className="mt-2 text-sm text-emerald-200">
+                                  Tracking potential profit
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                                <p className="text-sm text-muted-foreground">Sell journey</p>
+                                <p className="mt-2 text-2xl font-semibold text-foreground">{progress.progressLabel}</p>
+                                <p className="mt-2 text-sm text-muted-foreground">{progress.etaLabel}</p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                              <div className="flex items-center justify-between gap-3 text-sm">
+                                <span className="font-medium text-foreground">{progress.helper}</span>
+                                <span className="text-muted-foreground">{progress.progressPercent}%</span>
+                              </div>
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-border/60">
+                                <div
+                                  className="h-full rounded-full bg-emerald-400 transition-all"
+                                  style={{ width: `${progress.progressPercent}%` }}
+                                />
+                              </div>
+                              <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+                                <span>Buy on {flip.sourceBuy}</span>
+                                <span>Sell on {flip.sourceSell}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center">
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={sellValues[flip.id] ?? String(flip.sellPriceExpected)}
+                                onChange={(e) =>
+                                  setSellValues((current) => ({
+                                    ...current,
+                                    [flip.id]: e.target.value.replace(/[^0-9.]/g, ""),
+                                  }))
+                                }
+                                className="sm:max-w-[180px]"
+                                placeholder="Actual sell price"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => handleCompleteFlip(flip)}
+                                disabled={completingId === flip.id}
+                              >
+                                {completingId === flip.id ? "Saving..." : progress.tone === "ready" ? "Sell now" : "Mark as sold"}
+                              </Button>
+                            </div>
                           </div>
-
-                          <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-                            Tracking
-                          </span>
-                        </div>
-
-                        <div className="flex items-end justify-between gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Expected Profit</p>
-                            <p className="text-3xl font-bold text-emerald-400">
-                              {flip.profitExpected >= 0 ? "+" : ""}
-                              {formatCurrency(flip.profitExpected)}
-                            </p>
-                          </div>
-
-                          <div className="text-right text-sm text-muted-foreground">
-                            Buy on {flip.sourceBuy}
-                            <br />
-                            Sell on {flip.sourceSell}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center">
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={sellValues[flip.id] ?? String(flip.sellPriceExpected)}
-                            onChange={(e) =>
-                              setSellValues((current) => ({
-                                ...current,
-                                [flip.id]: e.target.value.replace(/[^0-9.]/g, ""),
-                              }))
-                            }
-                            className="sm:max-w-[180px]"
-                            placeholder="Actual sell price"
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => handleCompleteFlip(flip)}
-                            disabled={completingId === flip.id}
-                          >
-                            {completingId === flip.id ? "Saving..." : "Mark as sold"}
-                          </Button>
-                        </div>
-                      </div>
-                    </article>
+                        </article>
+                      )
+                    })()
                   ))}
                 </div>
               )}

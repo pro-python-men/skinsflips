@@ -4,6 +4,15 @@ export const revalidate = 0;
 import { NextResponse } from "next/server";
 import { backendFetch, unauthorized } from "@/lib/backend";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+
+let lastSuccessfulPayload: {
+  flips: any[];
+  isCached: boolean;
+  lastUpdated: number | null;
+} | null = null;
+
 function normalizeLiquidity(liquidity: unknown) {
   if (liquidity === "HIGH") return "high";
   if (liquidity === "MEDIUM") return "medium";
@@ -12,22 +21,7 @@ function normalizeLiquidity(liquidity: unknown) {
   return undefined;
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const qs = url.searchParams.toString();
-  const path = qs ? `/flips/best?${qs}` : "/flips/best";
-
-  const { response, unauthorized: isUnauthorized } = await backendFetch(path);
-  if (isUnauthorized) return unauthorized();
-
-  const data = await response!.json().catch(() => null);
-  if (!response!.ok) {
-    return NextResponse.json(
-      data || { message: "Failed to fetch best flips" },
-      { status: response!.status }
-    );
-  }
-
+function normalizePayload(data: unknown) {
   const payload =
     data && typeof data === "object" && !Array.isArray(data) ? data : { flips: data };
 
@@ -60,12 +54,67 @@ export async function GET(request: Request) {
     createdAt: f.createdAt == null ? undefined : String(f.createdAt)
   }));
 
-  const out = {
+  return {
     flips: normalizedFlips,
     isCached: Boolean((payload as any).isCached),
     lastUpdated:
       (payload as any).lastUpdated == null ? null : Number((payload as any).lastUpdated)
   };
+}
 
-  return NextResponse.json(out, { status: 200 });
+async function fetchPublicBestFlips(path: string) {
+  const response = await fetch(`${API_BASE_URL}/public${path}`, {
+    cache: "no-store"
+  });
+  const data = await response.json().catch(() => null);
+  return { response, data };
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const qs = url.searchParams.toString();
+  const path = qs ? `/flips/best?${qs}` : "/flips/best";
+
+  const { response, unauthorized: isUnauthorized } = await backendFetch(path);
+  if (!isUnauthorized) {
+    const data = await response!.json().catch(() => null);
+    if (response!.ok) {
+      const out = normalizePayload(data);
+      if (out.flips.length > 0) {
+        lastSuccessfulPayload = out;
+      }
+      return NextResponse.json(out, { status: 200 });
+    }
+  }
+
+  try {
+    const publicResult = await fetchPublicBestFlips(path);
+    if (publicResult.response.ok) {
+      const out = normalizePayload(publicResult.data);
+      if (out.flips.length > 0) {
+        lastSuccessfulPayload = out;
+      }
+      return NextResponse.json(out, { status: 200 });
+    }
+  } catch {
+    // Fall back to the last successful payload below.
+  }
+
+  if (lastSuccessfulPayload) {
+    return NextResponse.json(
+      {
+        ...lastSuccessfulPayload,
+        isCached: true,
+        lastUpdated: lastSuccessfulPayload.lastUpdated
+      },
+      { status: 200 }
+    );
+  }
+
+  if (isUnauthorized) return unauthorized();
+
+  return NextResponse.json(
+    { message: "Failed to fetch best flips" },
+    { status: 502 }
+  );
 }

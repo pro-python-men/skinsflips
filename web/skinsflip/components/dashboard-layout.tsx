@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuth } from "@/components/auth-context"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { cn } from "@/lib/utils"
@@ -12,36 +13,18 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title, requireAuth }: DashboardLayoutProps) {
+  const { user, isAuthenticated, isLoading: isLoadingAuth } = useAuth()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [authorized, setAuthorized] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (requireAuth) {
-      const checkAuth = async () => {
-        try {
-          const res = await fetch('/api/auth/me', { credentials: 'include' })
-          if (res.status === 401) {
-            const next = `${window.location.pathname}${window.location.search}`
-            window.location.href = `/login?next=${encodeURIComponent(next)}`
-            return
-          }
-          if (res.ok) {
-            setAuthorized(true)
-          } else {
-            setAuthorized(false)
-          }
-        } catch (e) {
-          setAuthorized(false)
-        }
-      }
-      checkAuth()
-    } else {
-      setAuthorized(true)
-    }
-  }, [requireAuth])
+    if (!requireAuth || isLoadingAuth || user) return
 
-  if (requireAuth && authorized === null) {
+    const next = `${window.location.pathname}${window.location.search}`
+    window.location.replace(`/login?next=${encodeURIComponent(next)}`)
+  }, [isLoadingAuth, requireAuth, user])
+
+  if (requireAuth && (isLoadingAuth || !isAuthenticated)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-muted-foreground">Checking auth...</div>

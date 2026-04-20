@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/components/auth-context"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { DealCard } from "@/components/deal-card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import type { BestFlipsResponse, Flip } from "@/lib/types/flip"
 
@@ -21,8 +23,11 @@ function formatUpdatedSeconds(lastUpdatedAt: number | null) {
 }
 
 export default function DashboardPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth()
   const updateIntervalMs = 15000
   const [flips, setFlips] = useState<Flip[]>([])
+  const [trackedIds, setTrackedIds] = useState<Record<string, boolean>>({})
+  const [trackingIds, setTrackingIds] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
@@ -75,6 +80,53 @@ export default function DashboardPage() {
   const topFlip = orderedFlips[0] ?? null
   const nextFlips = orderedFlips.slice(1)
 
+  const getBuyHref = (flip: Flip) => {
+    const source = String(flip.sourceBuy || "").toLowerCase()
+
+    if (source.includes("csfloat")) return "https://csfloat.com/"
+    if (source.includes("skinport")) return "https://skinport.com/market"
+
+    return null
+  }
+
+  const trackFlip = async (flip: Flip) => {
+    if (trackingIds[flip.id] || trackedIds[flip.id]) return
+
+    setTrackingIds((current) => ({ ...current, [flip.id]: true }))
+
+    try {
+      await apiFetch("/api/flips/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skinName: flip.itemName ?? flip.name,
+          buyPrice: flip.buyPrice,
+          sellPriceExpected: flip.sellPrice,
+          sourceBuy: flip.sourceBuy,
+          sourceSell: flip.sourceSell,
+        }),
+      })
+
+      setTrackedIds((current) => ({ ...current, [flip.id]: true }))
+      toast({
+        title: "Tracking this opportunity",
+        description: `${flip.name} is now in Tracking.`,
+      })
+    } catch (e: any) {
+      toast({
+        title: "Could not track flip",
+        description: e?.message || "Unknown error",
+        variant: "destructive",
+      })
+    } finally {
+      setTrackingIds((current) => {
+        const next = { ...current }
+        delete next[flip.id]
+        return next
+      })
+    }
+  }
+
   const loadFlips = async () => {
     setLoading(true)
     setError("")
@@ -112,8 +164,9 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    if (isLoadingAuth || !isAuthenticated) return
     loadFlips()
-  }, [])
+  }, [isAuthenticated, isLoadingAuth])
 
   useEffect(() => {
     setUpdatedLabel(formatUpdatedSeconds(lastUpdatedAt))
@@ -205,6 +258,13 @@ export default function DashboardPage() {
                   {...topFlip}
                   featured
                   isBest
+                  buyHref={getBuyHref(topFlip) ?? undefined}
+                  buyDisabled={!getBuyHref(topFlip)}
+                  onTrack={() => {
+                    void trackFlip(topFlip)
+                  }}
+                  isTracking={Boolean(trackingIds[topFlip.id])}
+                  isTracked={Boolean(trackedIds[topFlip.id])}
                 />
               </section>
             ) : null}
@@ -222,7 +282,17 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {nextFlips.map((flip) => (
-                    <DealCard key={flip.id} {...flip} />
+                    <DealCard
+                      key={flip.id}
+                      {...flip}
+                      buyHref={getBuyHref(flip) ?? undefined}
+                      buyDisabled={!getBuyHref(flip)}
+                      onTrack={() => {
+                        void trackFlip(flip)
+                      }}
+                      isTracking={Boolean(trackingIds[flip.id])}
+                      isTracked={Boolean(trackedIds[flip.id])}
+                    />
                   ))}
                 </div>
               </section>

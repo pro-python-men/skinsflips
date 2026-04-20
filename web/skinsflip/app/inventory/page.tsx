@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth-context";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { SteamLoginButton } from "@/components/steam-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -26,6 +26,9 @@ type InventoryRow = InventoryItem & {
   roi: number;
 };
 
+const SELL_MARKETPLACE = "Skinport";
+const SELL_MARKETPLACE_HREF = "https://skinport.com/market";
+
 function getSellRecommendation(row: InventoryRow) {
   if (row.profit > 0 && row.roi >= 10) {
     return {
@@ -47,12 +50,40 @@ function getSellRecommendation(row: InventoryRow) {
   };
 }
 
+function getInventoryDecision(row: InventoryRow) {
+  const recommendation = getSellRecommendation(row);
+
+  if (recommendation.label === "Sell now") {
+    return {
+      marketplace: SELL_MARKETPLACE,
+      title: `Sell on ${SELL_MARKETPLACE} →`,
+      helper: "Best sell opportunity right now",
+      actionable: true,
+    };
+  }
+
+  if (recommendation.label === "Worth listing") {
+    return {
+      marketplace: SELL_MARKETPLACE,
+      title: `List on ${SELL_MARKETPLACE} →`,
+      helper: "Profit is available if you want to exit soon",
+      actionable: true,
+    };
+  }
+
+  return {
+    marketplace: SELL_MARKETPLACE,
+    title: "Hold for now",
+    helper: "Wait for a stronger sell price before listing",
+    actionable: false,
+  };
+}
+
 export default function InventoryPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   const [skin, setSkin] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
@@ -113,66 +144,12 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const data = await apiFetch("/api/auth/me");
-        setAuthorized(Boolean((data as { user?: unknown } | null)?.user));
-      } catch {
-        setAuthorized(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (authorized !== true) return;
+    if (isLoadingAuth || !isAuthenticated) return;
     refresh();
-  }, [authorized]);
-
-  if (!mounted) return null;
-
-  if (authorized === null) {
-    return (
-      <DashboardLayout title="Inventory">
-        <div className="flex min-h-[70vh] items-center justify-center">
-          <div className="text-sm text-muted-foreground">Checking your account...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (authorized === false) {
-    return (
-      <DashboardLayout title="Inventory">
-        <div className="flex min-h-[70vh] items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)]">
-            <h2 className="text-3xl font-semibold text-foreground">
-              Unlock your inventory profit opportunities
-            </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              See which skins are ready to sell and where your best profit is building.
-            </p>
-            <div className="mt-6">
-              <SteamLoginButton
-                href="/api/auth/steam"
-                useButtonWrapper
-                buttonClassName="bg-[#1b2838] text-white hover:bg-[#2a475e]"
-                anchorClassName="inline-flex"
-              />
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  }, [isAuthenticated, isLoadingAuth]);
 
   return (
-    <DashboardLayout title="Inventory">
+    <DashboardLayout title="Inventory" requireAuth>
       <div className="space-y-6">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
@@ -195,12 +172,15 @@ export default function InventoryPage() {
           </div>
         ) : computed.rows.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card p-8">
-            <div className="space-y-3 text-center">
-              <p className="text-xl font-semibold text-foreground">
-                No inventory tracked yet
+            <div className="mx-auto max-w-2xl space-y-4 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                Turn inventory into sell decisions
+              </p>
+              <p className="text-2xl font-semibold text-foreground">
+                See where each skin is most worth selling before you list anything
               </p>
               <p className="text-sm text-muted-foreground">
-                Add your first skin to instantly see current profit and whether it is worth selling now.
+                Track your buy price and current best sell price, then let the page surface your strongest exit opportunities first.
               </p>
               <div className="pt-2">
                 <Button
@@ -212,7 +192,7 @@ export default function InventoryPage() {
                     });
                   }}
                 >
-                  Add first item
+                  Add your first item
                 </Button>
               </div>
             </div>
@@ -224,13 +204,13 @@ export default function InventoryPage() {
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                   <div className="space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                      Start here
+                      Best sell opportunity
                     </div>
                     <h2 className="text-2xl font-semibold text-foreground">
                       {computed.topOpportunity.skin}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      This is your strongest inventory decision right now based on current tracked prices.
+                      This is the item to check first if you want to realize profit from your inventory.
                     </p>
                   </div>
 
@@ -251,7 +231,7 @@ export default function InventoryPage() {
                 <div className="mt-6 grid gap-3 md:grid-cols-4">
                   <div className="rounded-xl border border-border/60 bg-background/20 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Buy-in
+                      Buy price
                     </div>
                     <div className="mt-1 text-base font-semibold text-foreground">
                       {formatCurrency(computed.topOpportunity.purchasePrice)}
@@ -260,7 +240,7 @@ export default function InventoryPage() {
 
                   <div className="rounded-xl border border-border/60 bg-background/20 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Current price
+                      Current best sell
                     </div>
                     <div className="mt-1 text-base font-semibold text-foreground">
                       {formatCurrency(computed.topOpportunity.currentPrice)}
@@ -278,145 +258,129 @@ export default function InventoryPage() {
 
                   <div className="rounded-xl border border-border/60 bg-background/20 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Position value
+                      Current value
                     </div>
                     <div className="mt-1 text-base font-semibold text-foreground">
                       {formatCurrency(computed.topOpportunity.value)}
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-6 flex flex-col gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      Best marketplace to sell right now: {SELL_MARKETPLACE}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Current tracked sell price points to the strongest exit opportunity here.
+                    </p>
+                  </div>
+                  <Button asChild className="rounded-xl bg-green-500 px-6 text-black hover:bg-green-600">
+                    <a href={SELL_MARKETPLACE_HREF} target="_blank" rel="noreferrer">
+                      Sell on {SELL_MARKETPLACE} →
+                    </a>
+                  </Button>
+                </div>
               </section>
             ) : null}
 
-            <section className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                    Profit ready
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    Sell these first
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Highest-profit positions in your inventory right now.
-                  </p>
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                  Sell decisions
                 </div>
-
-                <div className="mt-5 space-y-3">
-                  {computed.profitableRows.length === 0 ? (
-                    <div className="rounded-xl border border-border/60 bg-background/20 p-4 text-sm text-muted-foreground">
-                      No profitable sell opportunities right now. Your tracked items are better held for now.
-                    </div>
-                  ) : (
-                    computed.profitableRows.slice(0, 6).map((row) => {
-                      const recommendation = getSellRecommendation(row);
-
-                      return (
-                        <article
-                          key={row.id}
-                          className="rounded-xl border border-border/60 bg-background/20 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <h4 className="font-semibold text-foreground">{row.skin}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Bought at {formatCurrency(row.purchasePrice)} · now {formatCurrency(row.currentPrice)}
-                              </p>
-                            </div>
-                            <div
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${recommendation.className}`}
-                            >
-                              {recommendation.label}
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex items-end justify-between gap-4">
-                            <div>
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Profit
-                              </div>
-                              <div className="mt-1 text-2xl font-bold text-emerald-400">
-                                {formatCurrency(row.profit)}
-                              </div>
-                            </div>
-
-                            <div className="text-right text-sm">
-                              <div className="font-semibold text-foreground">
-                                {formatPercent(row.roi, 1)} ROI
-                              </div>
-                              <div className="text-muted-foreground">
-                                Qty {row.quantity} · Value {formatCurrency(row.value)}
-                              </div>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })
-                  )}
-                </div>
+                <h3 className="text-xl font-semibold text-foreground">
+                  Where to sell each item next
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Open inventory and immediately see the current best exit decision for every position.
+                </p>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Watchlist
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    Hold these for now
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Items that are not yet at a strong sell point.
-                  </p>
-                </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {computed.rows.map((row) => {
+                  const recommendation = getSellRecommendation(row);
+                  const decision = getInventoryDecision(row);
 
-                <div className="mt-5 space-y-3">
-                  {computed.holdRows.length === 0 ? (
-                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-300">
-                      Everything in your inventory is currently in profit.
-                    </div>
-                  ) : (
-                    computed.holdRows.slice(0, 6).map((row) => (
-                      <article
-                        key={row.id}
-                        className="rounded-xl border border-border/60 bg-background/20 p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <h4 className="font-semibold text-foreground">{row.skin}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Bought at {formatCurrency(row.purchasePrice)} · now {formatCurrency(row.currentPrice)}
-                            </p>
+                  return (
+                    <article
+                      key={row.id}
+                      className="rounded-2xl border border-border bg-card p-6"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <h4 className="text-lg font-semibold text-foreground">{row.skin}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Current value {formatCurrency(row.value)} · Qty {row.quantity}
+                          </p>
+                        </div>
+                        <div
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${recommendation.className}`}
+                        >
+                          {recommendation.label}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Buy price
                           </div>
-                          <div className="rounded-full border border-border/60 px-3 py-1 text-xs font-semibold text-muted-foreground">
-                            Hold
+                          <div className="mt-2 text-lg font-semibold text-foreground">
+                            {formatCurrency(row.purchasePrice)}
                           </div>
                         </div>
 
-                        <div className="mt-4 flex items-end justify-between gap-4">
-                          <div>
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Profit
-                            </div>
-                            <div
-                              className={`mt-1 text-2xl font-bold ${
-                                row.profit >= 0 ? "text-emerald-400" : "text-rose-400"
-                              }`}
-                            >
-                              {formatCurrency(row.profit)}
-                            </div>
+                        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Current best sell
                           </div>
-
-                          <div className="text-right text-sm">
-                            <div className="font-semibold text-foreground">
-                              {formatPercent(row.roi, 1)} ROI
-                            </div>
-                            <div className="text-muted-foreground">
-                              Qty {row.quantity} · Value {formatCurrency(row.value)}
-                            </div>
+                          <div className="mt-2 text-lg font-semibold text-foreground">
+                            {formatCurrency(row.currentPrice)}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {decision.marketplace}
                           </div>
                         </div>
 
-                        <div className="mt-4 flex justify-end">
+                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Estimated profit
+                          </div>
+                          <div
+                            className={`mt-2 text-lg font-semibold ${
+                              row.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                          >
+                            {formatCurrency(row.profit)}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {formatPercent(row.roi, 1)} ROI
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-col gap-3 rounded-xl border border-border/60 bg-background/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            Recommended action
+                          </p>
+                          <p className="text-sm text-muted-foreground">{decision.helper}</p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          {decision.actionable ? (
+                            <Button asChild className="rounded-xl bg-green-500 text-black hover:bg-green-600">
+                              <a href={SELL_MARKETPLACE_HREF} target="_blank" rel="noreferrer">
+                                {decision.title}
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button variant="secondary" className="rounded-xl" disabled>
+                              {decision.title}
+                            </Button>
+                          )}
+
                           <Button
                             variant="secondary"
                             size="sm"
@@ -443,24 +407,26 @@ export default function InventoryPage() {
                             {deletingId === row.id ? "Deleting..." : "Delete"}
                           </Button>
                         </div>
-                      </article>
-                    ))
-                  )}
-                </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
 
             <section className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                  Portfolio signal
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                    Portfolio signal
+                  </div>
+                  <div className="mt-3 text-3xl font-bold text-foreground">
+                    {formatCurrency(computed.totalValue)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Current tracked inventory value.
+                  </p>
                 </div>
-                <div className="mt-3 text-3xl font-bold text-foreground">
-                  {formatCurrency(computed.totalValue)}
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Current tracked inventory value.
-                </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-6">
@@ -480,9 +446,9 @@ export default function InventoryPage() {
 
         <section id="add-inventory-item" className="rounded-2xl border border-border bg-card p-6">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-foreground">Add inventory item</h3>
+            <h3 className="text-lg font-semibold text-foreground">Manage tracked inventory</h3>
             <p className="text-sm text-muted-foreground">
-              Use this only when you want to track another skin.
+              Add another item only when you want this page to evaluate a new sell decision.
             </p>
           </div>
 

@@ -11,16 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SteamLoginButton } from "@/components/steam-login-button"
-import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
-
-type AuthUser = {
-  id: number
-  email?: string | null
-  steamId?: string | null
-  displayName?: string | null
-  avatarUrl?: string | null
-}
+import { useAuth } from "@/components/auth-context"
 
 interface HeaderProps {
   title: string
@@ -29,22 +21,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true)
-      try {
-        const data = await apiFetch("/api/auth/me")
-        setUser((data as any)?.user ?? null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    run()
-  }, [])
+  const { user, isLoading, setUser } = useAuth()
 
   const logout = async () => {
     try {
@@ -71,7 +48,7 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
       </div>
 
-      {loading ? null : user === null ? (
+      {isLoading ? null : user === null ? (
         <SteamLoginButton
           href="/api/auth/steam"
           iconSize={28}

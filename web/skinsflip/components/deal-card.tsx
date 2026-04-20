@@ -21,8 +21,12 @@ type DealCardProps = Pick<
   sellWindow?: Flip["sellWindow"]
   salesLast7d?: Flip["salesLast7d"]
   stabilityScore?: Flip["stabilityScore"]
+  buyHref?: string
+  buyDisabled?: boolean
   onTrack?: () => void
   isTracking?: boolean
+  isTracked?: boolean
+  trackedHref?: string
   featured?: boolean
   isBest?: boolean
   variant?: "default" | "landing"
@@ -47,8 +51,12 @@ export function DealCard({
   sellWindow,
   salesLast7d,
   stabilityScore,
+  buyHref,
+  buyDisabled = false,
   onTrack,
   isTracking = false,
+  isTracked = false,
+  trackedHref = "/history",
   featured = false,
   isBest = false,
   variant = "default",
@@ -57,24 +65,58 @@ export function DealCard({
   ctaHref,
   onCardClick,
 }: DealCardProps) {
+  const formatEtaText = (value: string | undefined) => {
+    if (!value) return "within a few days"
+    return String(value).replace(/^~/, "about ")
+  }
+
+  const getWhyThisFlipText = () => {
+    if (signalText) return signalText
+    if (salesCount >= 10 && confidenceValue >= 70) return "High demand + recent sales"
+    if (profitPercent && profitPercent >= 10) return "Price gap between marketplaces"
+    if (stabilityPercent >= 70) return "Undervalued listing detected"
+    return "Profitable spread backed by recent sales"
+  }
+
+  const getUrgencyText = () => {
+    if (salesCount >= 20) return "🔥 Opportunity active now"
+    if (salesCount >= 10) return "Selling fast"
+    return "High demand"
+  }
+
+  const getLiquidityDecisionText = () => {
+    if (salesCount >= 20) return "Sells fast"
+    if (salesCount >= 10) return "Moves quickly"
+    if (salesCount >= 3) return `Steady demand (${formatEtaText(eta)})`
+    return `Slower sale (${formatEtaText(eta)})`
+  }
+
+  const getRealMarketText = () => {
+    if (salesCount > 0) return "Based on last 7 days sales"
+    return "Recent real sales data"
+  }
+
+  const getScarcityText = () => {
+    if (featured || isBest) return "Top opportunity right now"
+    return "Only a few deals like this available"
+  }
+
   const profitClassName = profit >= 0 ? "text-emerald-400" : "text-red-400"
   const formattedProfit = `${profit >= 0 ? "+" : "-"}${formatCurrency(Math.abs(profit))}`
   const formattedProfitPercent = `(${formatPercent(profitPercent ?? 0, 0)})`
   const salesCount = typeof salesLast7d === "number" ? salesLast7d : 0
-  const speedLabel =
-    salesCount > 20
-      ? "Sells very fast"
-      : salesCount >= 10
-        ? "High demand"
-        : salesCount >= 3
-          ? "Sells moderately"
-          : "Slow market"
   const confidenceValue = Number(confidence ?? 0)
   const stabilityValue = Number(stabilityScore ?? 0)
   const stabilityPercent =
     stabilityValue > 0 && stabilityValue <= 1 ? Math.round(stabilityValue * 100) : Math.round(stabilityValue)
   const sellWindowText = sellWindow ? sellWindow : "n/a"
   const liquidityText = liquidity ? liquidity : "unknown"
+  const whyThisFlipText = getWhyThisFlipText()
+  const urgencyText = getUrgencyText()
+  const liquidityDecisionText = getLiquidityDecisionText()
+  const realMarketText = getRealMarketText()
+  const scarcityText = getScarcityText()
+  const etaDisplay = eta ?? "~7 days"
   const metaText = [
     `Rank ${rankScore ?? "-"}`,
     `Liquidity ${liquidityText}`,
@@ -83,10 +125,62 @@ export function DealCard({
   ].join(" • ")
   const isLanding = variant === "landing"
   const isClickable = Boolean(onCardClick)
+  const buyLabel = `Buy now on ${sourceBuy} →`
   const containerClassName = [
     "rounded-xl border border-border bg-zinc-950 p-6 shadow-sm transition-transform transition-colors duration-200 hover:-translate-y-1 hover:border-emerald-400/40",
     isClickable ? "cursor-pointer" : "",
   ].join(" ")
+
+  const renderPrimaryAction = () => {
+    if (buyDisabled || !buyHref) {
+      return (
+        <Button
+          type="button"
+          disabled
+          className="h-12 w-full rounded-xl bg-emerald-500 text-base font-semibold text-black opacity-45"
+        >
+          {buyLabel}
+        </Button>
+      )
+    }
+
+    return (
+      <Button
+        asChild
+        className="h-12 w-full rounded-xl bg-green-500 text-base font-semibold text-black shadow-[0_16px_40px_rgba(34,197,94,0.24)] transition hover:bg-green-600"
+      >
+        <a
+          href={buyHref}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+        >
+          {buyLabel}
+        </a>
+      </Button>
+    )
+  }
+
+  const renderSecondaryAction = () => {
+    if (!onTrack) return null
+
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={(event) => {
+          event.stopPropagation()
+          onTrack()
+        }}
+        disabled={isTracking || isTracked}
+        className="h-11 w-full rounded-xl border-border/80 bg-transparent text-sm font-medium text-foreground hover:bg-background/50"
+      >
+        {isTracked ? "Tracking this opportunity" : isTracking ? "Adding to your opportunities..." : "Track this flip"}
+      </Button>
+    )
+  }
 
   if (isLanding) {
     return (
@@ -103,7 +197,7 @@ export function DealCard({
         role={isClickable ? "button" : undefined}
         tabIndex={isClickable ? 0 : undefined}
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
             <p className="text-lg font-semibold text-white">{name}</p>
             <p className="text-sm text-muted-foreground">
@@ -111,52 +205,69 @@ export function DealCard({
             </p>
           </div>
 
-          <div className="space-y-1">
-            <p className={`text-5xl font-extrabold leading-none ${profitClassName}`}>{formattedProfit}</p>
-            <p className="text-lg font-semibold text-emerald-300">{formattedProfitPercent}</p>
-            <p className="text-xs text-muted-foreground">Based on real sales data</p>
-            {signalText ? (
-              <p className="text-sm font-medium text-emerald-300">{signalText}</p>
+          <div className="space-y-2">
+            <div className="flex items-end justify-between gap-4">
+              <div className="space-y-1">
+                <p className={`text-5xl font-extrabold leading-none ${profitClassName}`}>{formattedProfit}</p>
+                <p className="text-lg font-semibold text-emerald-300">{formattedProfitPercent}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-background/20 px-3 py-2 text-right">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Timeline</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{etaDisplay}</p>
+              </div>
+            </div>
+            <p className="text-sm font-medium text-emerald-200">You could make about {formatCurrency(profit)} on this flip</p>
+            <p className="text-sm text-muted-foreground">{whyThisFlipText}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                {urgencyText}
+              </span>
+              <span className="text-muted-foreground">{realMarketText}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{scarcityText}</p>
+          </div>
+
+          <div className="space-y-2">
+            {renderPrimaryAction()}
+            <p className="text-xs text-muted-foreground">{realMarketText}</p>
+            {renderSecondaryAction()}
+            {isTracked ? (
+              <div className="flex items-center justify-between gap-3 text-xs font-medium text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span>Now tracking potential profit</span>
+                </div>
+                <Link href={trackedHref} className="text-emerald-200 underline underline-offset-4">
+                  View tracking
+                </Link>
+              </div>
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sell speed</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">{speedLabel}</p>
-            <p className="mt-1 text-sm text-muted-foreground">Based on last 7d sales</p>
-          </div>
-
-          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">{confidenceValue}% confidence</p>
-              <p className="text-xs text-muted-foreground">{salesCount} sold</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Buy price</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(buyPrice)}</p>
             </div>
-            <Progress value={confidenceValue} className="mt-3 h-2 bg-white/10 [&_[data-slot=progress-indicator]]:bg-emerald-400" />
+            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Target sell</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(sellPrice)}</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Liquidity</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{liquidityDecisionText}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{realMarketText}</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-foreground">{confidenceValue}% confidence</p>
+                <p className="text-xs text-muted-foreground">{etaDisplay}</p>
+              </div>
+              <Progress value={confidenceValue} className="mt-3 h-2 bg-white/10 [&_[data-slot=progress-indicator]]:bg-emerald-400" />
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground">{metaText}</p>
-
-          {ctaLabel && ctaHref ? (
-            <div className="flex justify-end">
-              <Button asChild className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600">
-                <Link href={ctaHref}>{ctaLabel}</Link>
-              </Button>
-            </div>
-          ) : onTrack ? (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onTrack()
-                }}
-                disabled={isTracking}
-                className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600"
-              >
-                {isTracking ? "Loading..." : "View deal"}
-              </Button>
-            </div>
-          ) : null}
         </div>
       </div>
     )
@@ -191,72 +302,91 @@ export function DealCard({
 
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">Profit</p>
-          <div className="mt-2 space-y-1">
-            <p className={`text-5xl font-extrabold leading-none ${profitClassName}`}>{formattedProfit}</p>
-            <p className="text-xl font-bold text-emerald-300">{formattedProfitPercent}</p>
-            <p className="text-xs text-muted-foreground">Based on real sales data</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Sell speed</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{speedLabel}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Based on last 7d sales</p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full border border-border/60 px-3 py-1">
-              {salesCount} salesLast7d
-            </span>
-            <span className="rounded-full border border-border/60 px-3 py-1 capitalize">
-              liquidity {liquidityText}
-            </span>
-            {eta ? (
-              <span className="rounded-full border border-border/60 px-3 py-1">
-                {eta}
+          <div className="mt-2 space-y-2">
+            <div className="flex items-end justify-between gap-4">
+              <div className="space-y-1">
+                <p className={`text-5xl font-extrabold leading-none ${profitClassName}`}>{formattedProfit}</p>
+                <p className="text-xl font-bold text-emerald-300">{formattedProfitPercent}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-background/20 px-3 py-2 text-right">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Timeline</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{etaDisplay}</p>
+              </div>
+            </div>
+            <p className="text-sm font-medium text-emerald-200">You could make about {formatCurrency(profit)} on this flip</p>
+            <p className="text-sm text-muted-foreground">{whyThisFlipText}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                {urgencyText}
               </span>
-            ) : null}
+              <span className="text-muted-foreground">{realMarketText}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{scarcityText}</p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-base font-semibold text-foreground">{confidenceValue}% confidence</p>
-            <p className="text-xs text-muted-foreground">
-              {sourceBuy} {"\u2192"} {sourceSell}
-            </p>
-          </div>
-          <Progress value={confidenceValue} className="mt-3 h-2 bg-white/10 [&_[data-slot=progress-indicator]]:bg-emerald-400" />
+        <div className="space-y-2">
+          {renderPrimaryAction()}
+          <p className="text-xs text-muted-foreground">{realMarketText}</p>
+          {renderSecondaryAction()}
+          {isTracked ? (
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-emerald-300">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span>Now tracking potential profit</span>
+              </div>
+              <Link href={trackedHref} className="text-emerald-200 underline underline-offset-4">
+                View tracking
+              </Link>
+            </div>
+          ) : null}
         </div>
 
-        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-          <div className="rounded-lg border border-border/60 bg-background/10 p-3">
-            Sell window: {sellWindowText}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Buy price</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{formatCurrency(buyPrice)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Buy on {sourceBuy}</p>
           </div>
-          <div className="rounded-lg border border-border/60 bg-background/10 p-3">
-            Stability: {stabilityPercent}%
+
+          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target sell</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{formatCurrency(sellPrice)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Sell on {sourceSell}</p>
           </div>
-          <div className="rounded-lg border border-border/60 bg-background/10 p-3">
-            Rank score: {rankScore ?? "-"}
+
+          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Liquidity</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{liquidityDecisionText}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border/60 px-3 py-1 capitalize">
+                {liquidityText}
+              </span>
+              <span className="rounded-full border border-border/60 px-3 py-1">
+                {realMarketText}
+              </span>
+              {eta ? (
+                <span className="rounded-full border border-border/60 px-3 py-1">
+                  ETA {etaDisplay}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div className="rounded-lg border border-border/60 bg-background/10 p-3 capitalize">
-            Liquidity: {liquidityText}
+
+          <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-base font-semibold text-foreground">{confidenceValue}% confidence</p>
+              <p className="text-xs text-muted-foreground">{sellWindowText} window</p>
+            </div>
+            <Progress value={confidenceValue} className="mt-3 h-2 bg-white/10 [&_[data-slot=progress-indicator]]:bg-emerald-400" />
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Stability {stabilityPercent}%</span>
+              <span>Rank {rankScore ?? "-"}</span>
+            </div>
           </div>
         </div>
 
-        {onTrack ? (
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                onTrack()
-              }}
-              disabled={isTracking}
-              className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600"
-            >
-              {isTracking ? "Loading..." : "View deal"}
-            </Button>
-          </div>
-        ) : ctaLabel && ctaHref ? (
+        {ctaLabel && ctaHref ? (
           <div className="flex justify-end">
             <Button asChild className="rounded-xl bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-600">
               <Link href={ctaHref}>{ctaLabel}</Link>
