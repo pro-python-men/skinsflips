@@ -12,6 +12,13 @@ Monorepo:
 1. Create `./.env` (copy from `./.env.example`) and set:
    - `JWT_SECRET`
    - `DB_PASSWORD` (and other DB values if needed)
+   - (optional) Best flips BUFF Market:
+     - `BEST_FLIPS_ENABLE_BUFFMARKET_BUY=1`
+     - `BUFFMARKET_COOKIE=...`
+     - `BEST_FLIPS_BUFFMARKET_PER_ITEM_MAX=5` (optional; default follows `BEST_FLIPS_CSFLOAT_PER_ITEM_MAX`)
+     - `BUFFMARKET_FEE_RATE=0.025` (optional; default 0.025)
+   - Best flips buy sources (optional query param):
+     - `/flips/best?buySources=csfloat,skinport,buff`
 2. Install and migrate:
    - `npm install`
    - `npm run migrate`

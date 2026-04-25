@@ -48,6 +48,21 @@ export default function DashboardPage() {
       return false
     }
   })
+  const [buySources, setBuySources] = useState(() => {
+    try {
+      if (typeof window === "undefined") {
+        return { csfloat: true, skinport: false, buff: false }
+      }
+      const raw = window.localStorage.getItem("bestFlipsBuySources") || ""
+      const parsed = raw ? (JSON.parse(raw) as any) : null
+      const csfloat = parsed && typeof parsed === "object" ? Boolean(parsed.csfloat) : true
+      const skinport = parsed && typeof parsed === "object" ? Boolean(parsed.skinport) : false
+      const buff = parsed && typeof parsed === "object" ? Boolean(parsed.buff) : false
+      return { csfloat, skinport, buff }
+    } catch {
+      return { csfloat: true, skinport: false, buff: false }
+    }
+  })
 
   useEffect(() => {
     try {
@@ -67,6 +82,14 @@ export default function DashboardPage() {
     }
   }, [relaxFilters])
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("bestFlipsBuySources", JSON.stringify(buySources))
+    } catch {
+      // ignore
+    }
+  }, [buySources])
+
   const orderedFlips = useMemo(() => {
     return [...flips].sort((a, b) => {
       const rankA = Number(a.rankScore ?? 0)
@@ -82,12 +105,29 @@ export default function DashboardPage() {
 
   const getBuyHref = (flip: Flip) => {
     const source = String(flip.sourceBuy || "").toLowerCase()
+    const itemName = String(flip.itemName ?? flip.name ?? "").trim()
+    const q = itemName ? encodeURIComponent(itemName) : ""
 
-    if (source.includes("csfloat")) return "https://csfloat.com/"
-    if (source.includes("skinport")) return "https://skinport.com/market"
+    if (source.includes("csfloat")) {
+      return itemName ? `https://csfloat.com/search?market_hash_name=${q}` : "https://csfloat.com/"
+    }
+    if (source.includes("skinport")) {
+      return itemName ? `https://skinport.com/market?search=${q}` : "https://skinport.com/market"
+    }
+    if (source.includes("buff")) {
+      return itemName ? `https://buff.market/market/all?search=${q}` : "https://buff.market/market/all"
+    }
 
     return null
   }
+
+  const buySourcesCsv = useMemo(() => {
+    const selected = Object.entries(buySources)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([key]) => key)
+    if (selected.length === 0) return "csfloat"
+    return selected.join(",")
+  }, [buySources])
 
   const trackFlip = async (flip: Flip) => {
     if (trackingIds[flip.id] || trackedIds[flip.id]) return
@@ -135,6 +175,7 @@ export default function DashboardPage() {
       const budget = maxBuyPriceUsd.trim()
       const params = new URLSearchParams()
       if (budget) params.set("maxBuyPrice", budget)
+      if (buySourcesCsv) params.set("buySources", buySourcesCsv)
       if (relaxFilters) {
         params.set("minProfitUsd", "0.25")
         params.set("minProfitPercent", "3")
@@ -209,6 +250,37 @@ export default function DashboardPage() {
                 className="h-9 w-28"
                 placeholder="e.g. 250"
               />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground">Buy from</span>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.csfloat}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, csfloat: Boolean(v) }))
+                  }}
+                />
+                CSFloat
+              </Label>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.skinport}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, skinport: Boolean(v) }))
+                  }}
+                />
+                Skinport
+              </Label>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.buff}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, buff: Boolean(v) }))
+                  }}
+                />
+                BUFF
+              </Label>
             </div>
 
             <Label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">

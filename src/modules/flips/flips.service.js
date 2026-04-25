@@ -8,6 +8,10 @@ import {
 } from "./flips.repository.js";
 import { fetchSkinportItems, fetchSkinportSalesHistory } from "./skinport.client.js";
 import { fetchCsfloatListings } from "./csfloat.client.js";
+import {
+  fetchBuffmarketGoodsSearch,
+  pickBuffmarketBuyCentsFromGoodsRow
+} from "./buffmarket.client.js";
 
 function asPositiveNumber(value, name) {
   const numberValue = Number(value);
@@ -488,6 +492,7 @@ function feeConfigForSellSource(source, sellCents) {
   if (s.includes("csfloat")) return { feeRate: 0.02, mode: "ceil" };
   if (s.includes("skinport"))
     return { feeRate: skinportSellFeeRateForSellCents(sellCents), mode: "ceil" };
+  if (s.includes("buff")) return { feeRate: envRate("BUFFMARKET_FEE_RATE", 0.025), mode: "ceil" };
   return { feeRate: 0, mode: "ceil" };
 }
 
@@ -580,11 +585,93 @@ async function fetchCsfloatListingsCached(params, { allowStaleOn429 = true } = {
   }
 }
 
+const buffmarketResponseCache = new Map();
+const BUFFMARKET_CACHE_MS = 2 * 60_000;
+let lastBuffmarketRateLimitWarnAt = 0;
+const BUFFMARKET_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
+let buffmarketBlockedUntil = 0;
+
+function buffmarketResult(data, meta) {
+  return { data, meta };
+}
+
+function buffmarketCacheKey(params) {
+  const search = typeof params?.search === "string" ? params.search : "";
+  const pageSize = Number(params?.pageSize) || 0;
+  const pageNum = Number(params?.pageNum) || 0;
+  const sortBy = typeof params?.sortBy === "string" ? params.sortBy : "";
+  return JSON.stringify({ search, pageSize, pageNum, sortBy });
+}
+
+async function fetchBuffmarketGoodsSearchCached(params, { allowStaleOn429 = true } = {}) {
+  const key = buffmarketCacheKey(params);
+  const now = Date.now();
+  const cached = buffmarketResponseCache.get(key) || null;
+
+  if (cached && cached.data && now - cached.at < BUFFMARKET_CACHE_MS) {
+    return buffmarketResult(cached.data, {
+      isCached: true,
+      rateLimited: false,
+      lastUpdated: cached.at || null
+    });
+  }
+
+  if (now < buffmarketBlockedUntil) {
+    if (cached && cached.data) {
+      return buffmarketResult(cached.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: cached.at || null
+      });
+    }
+    return buffmarketResult({ items: [], page_num: 1, page_size: 0, total_count: 0, total_page: 0 }, {
+      isCached: false,
+      rateLimited: true,
+      lastUpdated: null
+    });
+  }
+
+  try {
+    const data = await fetchBuffmarketGoodsSearch(params);
+    buffmarketResponseCache.set(key, { at: now, data });
+    return buffmarketResult(data, { isCached: false, rateLimited: false, lastUpdated: now });
+  } catch (e) {
+    const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
+    const is429 =
+      msg.includes("HTTP 429") ||
+      msg.toLowerCase().includes("too many requests") ||
+      msg.toLowerCase().includes("rate limit");
+
+    if (allowStaleOn429 && is429 && cached && cached.data) {
+      return buffmarketResult(cached.data, {
+        isCached: true,
+        rateLimited: true,
+        lastUpdated: cached.at || null
+      });
+    }
+
+    if (is429) {
+      buffmarketBlockedUntil = Date.now() + BUFFMARKET_RATE_LIMIT_COOLDOWN_MS;
+      if (Date.now() - lastBuffmarketRateLimitWarnAt > 60_000) {
+        lastBuffmarketRateLimitWarnAt = Date.now();
+        console.warn("[buffmarket] rate limited - returning empty result");
+      }
+      return buffmarketResult(
+        { items: [], page_num: 1, page_size: 0, total_count: 0, total_page: 0 },
+        { isCached: false, rateLimited: true, lastUpdated: null }
+      );
+    }
+
+    throw e;
+  }
+}
+
 export async function getBestFlipsReal({
   maxBuyPrice,
   minProfitUsd,
   minProfitPercent,
-  includeLowLiquidity
+  includeLowLiquidity,
+  buySources
 } = {}) {
   const now = Date.now();
   const maxBuyCents = toOptionalUsdCents(maxBuyPrice);
@@ -598,11 +685,23 @@ export async function getBestFlipsReal({
     maxBuyCents: maxBuyCents || null,
     minProfitCents: requiredMinProfitCents,
     minProfitPercent: requiredMinProfitPercent,
-    includeLowLiquidity: includeLow
+    includeLowLiquidity: includeLow,
+    buySources:
+      Array.isArray(buySources) && buySources.length > 0
+        ? Array.from(
+            new Set(
+              buySources
+                .map((v) => String(v || "").trim().toLowerCase())
+                .filter(Boolean)
+                .map((v) => (v === "buffmarket" ? "buff" : v))
+                .filter((v) => v === "csfloat" || v === "skinport" || v === "buff")
+            )
+          ).sort()
+        : null
   });
   const cached = bestFlipsCache.get(cacheKey) || null;
   if (cached && cached.data && now - cached.at < CACHE_MS) {
-    return { flips: cached.data, isCached: false, lastUpdated: cached.at };
+    return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: false };
   }
 
   try {
@@ -629,13 +728,38 @@ export async function getBestFlipsReal({
     );
     const minSales7d = Number(process.env.BEST_FLIPS_MIN_SALES_7D || 0);
 
-    const enableSkinportBuy = String(process.env.BEST_FLIPS_ENABLE_SKINPORT_BUY || "0") !== "0";
-    const enableCsfloatBuy = String(process.env.BEST_FLIPS_ENABLE_CSFLOAT_BUY || "1") !== "0";
+    const envEnableSkinportBuy = String(process.env.BEST_FLIPS_ENABLE_SKINPORT_BUY || "0") !== "0";
+    const envEnableCsfloatBuy = String(process.env.BEST_FLIPS_ENABLE_CSFLOAT_BUY || "1") !== "0";
+    const envEnableBuffmarketBuy =
+      String(process.env.BEST_FLIPS_ENABLE_BUFFMARKET_BUY || "0") !== "0";
+
+    const buySourcesSet =
+      Array.isArray(buySources) && buySources.length > 0
+        ? new Set(
+            buySources
+              .map((v) => String(v || "").trim().toLowerCase())
+              .filter(Boolean)
+              .map((v) => (v === "buffmarket" ? "buff" : v))
+              .filter((v) => v === "csfloat" || v === "skinport" || v === "buff")
+          )
+        : null;
+
+    const enableSkinportBuy =
+      envEnableSkinportBuy && (!buySourcesSet || buySourcesSet.has("skinport"));
+    const enableCsfloatBuy =
+      envEnableCsfloatBuy && (!buySourcesSet || buySourcesSet.has("csfloat"));
+    const enableBuffmarketBuy =
+      envEnableBuffmarketBuy && (!buySourcesSet || buySourcesSet.has("buff"));
     const debug = String(process.env.BEST_FLIPS_DEBUG || "").trim() === "1";
 
     const csfloatApiKey = String(process.env.CSFLOAT_API_KEY || "").trim();
     if (enableCsfloatBuy && !csfloatApiKey) {
       throw ApiError.badRequest("Missing CSFLOAT_API_KEY (needed to compute CSFloat buy prices)");
+    }
+
+    const buffmarketCookie = String(process.env.BUFFMARKET_COOKIE || "").trim();
+    if (enableBuffmarketBuy && !buffmarketCookie) {
+      throw ApiError.badRequest("Missing BUFFMARKET_COOKIE (needed to compute BUFF Market buy prices)");
     }
 
     const debugCounts = debug ? new Map() : null;
@@ -714,7 +838,12 @@ export async function getBestFlipsReal({
     itemsByName.set(name, it);
   }
 
-  const marketHashNames = Array.from(csfloatBestDealBuyByName.keys());
+  const marketHashNames = enableCsfloatBuy
+    ? Array.from(csfloatBestDealBuyByName.keys())
+    : skinportItems
+        .map((it) => (it && typeof it === "object" ? it.market_hash_name : null))
+        .filter((n) => typeof n === "string" && n.trim())
+        .slice(0, maxUnique);
   const skinportSalesHistory = [];
   for (let i = 0; i < marketHashNames.length; i += 50) {
     const chunk = marketHashNames.slice(i, i + 50);
@@ -793,32 +922,34 @@ export async function getBestFlipsReal({
       if (skinportDeal) out.push(skinportDeal);
     }
 
-    if (!enableCsfloatBuy) continue;
+    let quickProfit = 0;
+    if (enableCsfloatBuy) {
+      const quickBuyCents = csfloatBestDealBuyByName.get(name);
+      if (!Number.isFinite(Number(quickBuyCents)) || Number(quickBuyCents) <= 0) continue;
+      if (maxBuyCents && Number(quickBuyCents) > Number(maxBuyCents)) {
+        if (debug) debugHit("CSFloat->Skinport:buy_gt_budget");
+        continue;
+      }
 
-    const quickBuyCents = csfloatBestDealBuyByName.get(name);
-    if (!Number.isFinite(Number(quickBuyCents)) || Number(quickBuyCents) <= 0) continue;
-    if (maxBuyCents && Number(quickBuyCents) > Number(maxBuyCents)) {
-      if (debug) debugHit("CSFloat->Skinport:buy_gt_budget");
-      continue;
-    }
-
-    // Pre-filter: only bother fetching per-item lowest listings if there's a chance it passes profit filters.
-    const quickNetSell = sellCents - feeCents(sellCents, skinportSellFeeRateForSellCents(sellCents), "ceil");
-    const quickProfit = quickNetSell - Number(quickBuyCents);
-    if (debug) {
-      recordNear({
-        name,
-        sellWindow: pickedSell.sourceWindow,
-        sales7d,
-        quickBuy: Number(quickBuyCents) / 100,
-        sell: sellCents / 100,
-        netSell: quickNetSell / 100,
-        quickProfit: quickProfit / 100
-      });
-    }
-    if (quickProfit <= 0) {
-      if (debug) debugHit("CSFloat->Skinport:profit_non_positive");
-      continue;
+      // Pre-filter: only bother fetching per-item lowest listings if there's a chance it passes profit filters.
+      const quickNetSell =
+        sellCents - feeCents(sellCents, skinportSellFeeRateForSellCents(sellCents), "ceil");
+      quickProfit = quickNetSell - Number(quickBuyCents);
+      if (debug) {
+        recordNear({
+          name,
+          sellWindow: pickedSell.sourceWindow,
+          sales7d,
+          quickBuy: Number(quickBuyCents) / 100,
+          sell: sellCents / 100,
+          netSell: quickNetSell / 100,
+          quickProfit: quickProfit / 100
+        });
+      }
+      if (quickProfit <= 0) {
+        if (debug) debugHit("CSFloat->Skinport:profit_non_positive");
+        continue;
+      }
     }
 
     perItemQueue.push({
@@ -834,11 +965,71 @@ export async function getBestFlipsReal({
     });
   }
 
-  perItemQueue.sort((a, b) => b.quickProfit - a.quickProfit);
+  perItemQueue.sort((a, b) => {
+    if (enableCsfloatBuy) return b.quickProfit - a.quickProfit;
+    return (Number(b.sales7d) || 0) - (Number(a.sales7d) || 0) || b.sellCents - a.sellCents;
+  });
   const toFetch = perItemMax > 0 ? perItemQueue.slice(0, perItemMax) : [];
+  const buffPerItemMaxRaw = Number(process.env.BEST_FLIPS_BUFFMARKET_PER_ITEM_MAX || perItemMax);
+  const buffPerItemMax = Math.min(
+    30,
+    Math.max(0, Number.isFinite(buffPerItemMaxRaw) ? Math.round(buffPerItemMaxRaw) : perItemMax)
+  );
+  const buffToFetch =
+    enableBuffmarketBuy && buffPerItemMax > 0 ? perItemQueue.slice(0, buffPerItemMax) : [];
 
-  for (const row of toFetch) {
+  let buffmarketFetchErrors = 0;
+  for (const row of buffToFetch) {
     const name = row.name;
+
+    let buffGoods = null;
+    try {
+      const wrap = await fetchBuffmarketGoodsSearchCached({
+        search: name,
+        pageNum: 1,
+        pageSize: 20
+      });
+      buffGoods = wrap?.data || null;
+    } catch (e) {
+      buffGoods = null;
+      buffmarketFetchErrors += 1;
+      if (debug && buffmarketFetchErrors <= 3) {
+        const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e || "");
+        console.warn("[buffmarket] fetch error:", msg.slice(0, 200));
+      }
+      buffGoods = null;
+    }
+
+    const items = buffGoods && typeof buffGoods === "object" && "items" in buffGoods ? buffGoods.items : [];
+    const match = (Array.isArray(items) ? items : []).find(
+      (it) => String(it?.market_hash_name || "") === String(name)
+    );
+    const buffBuyCents = pickBuffmarketBuyCentsFromGoodsRow(match);
+
+    const buffDeal = buildOpportunity({
+      name,
+      buyCents: buffBuyCents,
+      sellCents: row.sellCents,
+      sellFeeRate: skinportSellFeeRateForSellCents(row.sellCents),
+      maxBuyCents,
+      minProfitCents: requiredMinProfitCents,
+      minProfitPercent: requiredMinProfitPercent,
+      includeLowLiquidity: includeLow,
+      listingCount: row.listingCount,
+      sourceBuy: "BUFF Market",
+      sourceSell: "Skinport",
+      salesLast7d: row.sales7d,
+      salesLast30d: row.sales30d,
+      stabilityScore: row.stabilityScore,
+      sellWindow: row.pickedSell.sourceWindow,
+      debugSink: debug ? (reason) => debugHit(`BUFF Market->Skinport:${reason}`) : undefined
+    });
+    if (buffDeal) out.push(buffDeal);
+  }
+
+  if (enableCsfloatBuy) {
+    for (const row of toFetch) {
+      const name = row.name;
 
     // Fetch actual lowest 1–3 listings for buyPrice.
     let perItemListings = null;
@@ -879,7 +1070,8 @@ export async function getBestFlipsReal({
       sellWindow: row.pickedSell.sourceWindow,
       debugSink: debug ? (reason) => debugHit(`CSFloat->Skinport:${reason}`) : undefined
     });
-    if (csfloatDeal) out.push(csfloatDeal);
+      if (csfloatDeal) out.push(csfloatDeal);
+    }
   }
   if (debug) {
     console.log("[best-flips] opportunities:", out.length);
@@ -902,12 +1094,19 @@ export async function getBestFlipsReal({
   });
   const sliced = out.slice(0, Number.isFinite(limit) ? limit : 50);
 
-  if (rateLimitedHit && cached && cached.data) {
-    return { flips: cached.data, isCached: true, lastUpdated: cached.at };
+  if (rateLimitedHit) {
+    if (cached && cached.data) {
+      return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: true };
+    }
+
+    // Don't overwrite the cache with an empty response if we're rate-limited.
+    if (sliced.length === 0) {
+      return { flips: [], isCached: false, lastUpdated: null, rateLimited: true };
+    }
   }
 
   bestFlipsCache.set(cacheKey, { at: now, data: sliced });
-  return { flips: sliced, isCached: false, lastUpdated: now };
+  return { flips: sliced, isCached: false, lastUpdated: now, rateLimited: false };
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
     const is429 =
@@ -915,8 +1114,9 @@ export async function getBestFlipsReal({
       msg.toLowerCase().includes("too many requests") ||
       msg.toLowerCase().includes("rate limited");
 
-    if (cached && cached.data) return { flips: cached.data, isCached: true, lastUpdated: cached.at };
-    if (is429) return { flips: [], isCached: true, lastUpdated: null };
+    if (cached && cached.data)
+      return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: is429 };
+    if (is429) return { flips: [], isCached: false, lastUpdated: null, rateLimited: true };
     throw e;
   }
 }

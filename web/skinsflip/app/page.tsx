@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { ArrowRight, DollarSign, Search, TrendingUp } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import type { BestFlipsResponse, Flip } from "@/lib/types/flip"
@@ -49,6 +51,21 @@ export default function HomePage() {
   const [error, setError] = useState("")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now")
+  const [buySources, setBuySources] = useState(() => {
+    try {
+      if (typeof window === "undefined") {
+        return { csfloat: true, skinport: false, buff: false }
+      }
+      const raw = window.localStorage.getItem("bestFlipsBuySources") || ""
+      const parsed = raw ? (JSON.parse(raw) as any) : null
+      const csfloat = parsed && typeof parsed === "object" ? Boolean(parsed.csfloat) : true
+      const skinport = parsed && typeof parsed === "object" ? Boolean(parsed.skinport) : false
+      const buff = parsed && typeof parsed === "object" ? Boolean(parsed.buff) : false
+      return { csfloat, skinport, buff }
+    } catch {
+      return { csfloat: true, skinport: false, buff: false }
+    }
+  })
 
   const destination = user ? "/dashboard" : "/login"
   const heroFlips = flips.slice(0, 3)
@@ -60,9 +77,18 @@ export default function HomePage() {
 
   const getBuyHref = (flip: Flip) => {
     const source = String(flip.sourceBuy || "").toLowerCase()
+    const itemName = String(flip.itemName ?? flip.name ?? "").trim()
+    const q = itemName ? encodeURIComponent(itemName) : ""
 
-    if (source.includes("csfloat")) return "https://csfloat.com/"
-    if (source.includes("skinport")) return "https://skinport.com/market"
+    if (source.includes("csfloat")) {
+      return itemName ? `https://csfloat.com/search?market_hash_name=${q}` : "https://csfloat.com/"
+    }
+    if (source.includes("skinport")) {
+      return itemName ? `https://skinport.com/market?search=${q}` : "https://skinport.com/market"
+    }
+    if (source.includes("buff")) {
+      return itemName ? `https://buff.market/market/all?search=${q}` : "https://buff.market/market/all"
+    }
 
     return null
   }
@@ -111,14 +137,29 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem("bestFlipsBuySources", JSON.stringify(buySources))
+    } catch {
+      // ignore
+    }
+  }, [buySources])
+
+  useEffect(() => {
     const loadPage = async () => {
       setLoading(true)
       setError("")
 
       try {
+        const selectedSources = Object.entries(buySources)
+          .filter(([, enabled]) => Boolean(enabled))
+          .map(([key]) => key)
+        const buySourcesCsv =
+          selectedSources.length === 0 ? "csfloat" : selectedSources.join(",")
+        const buySourcesQs = `?buySources=${encodeURIComponent(buySourcesCsv)}`
+
         const [authData, flipsData] = await Promise.all([
           apiFetch("/api/auth/me").catch(() => null),
-          apiFetch("/api/flips/best"),
+          apiFetch(`/api/flips/best${buySourcesQs}`),
         ])
 
         setUser((authData as { user?: AuthUser | null } | null)?.user ?? null)
@@ -145,7 +186,7 @@ export default function HomePage() {
     }
 
     loadPage()
-  }, [])
+  }, [buySources])
 
   useEffect(() => {
     setUpdatedLabel(formatUpdatedSeconds(lastUpdatedAt))
@@ -233,6 +274,36 @@ export default function HomePage() {
           <div className="mb-5">
             <h2 className="text-2xl font-semibold tracking-tight text-white">Live opportunities</h2>
             <p className="mt-1 text-sm text-muted-foreground">{updatedLabel}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-xs font-medium text-muted-foreground">Buy from</span>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.csfloat}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, csfloat: Boolean(v) }))
+                  }}
+                />
+                CSFloat
+              </Label>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.skinport}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, skinport: Boolean(v) }))
+                  }}
+                />
+                Skinport
+              </Label>
+              <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={buySources.buff}
+                  onCheckedChange={(v) => {
+                    setBuySources((current) => ({ ...current, buff: Boolean(v) }))
+                  }}
+                />
+                BUFF
+              </Label>
+            </div>
           </div>
 
           {loading || error || liveFlips.length === 0 ? (

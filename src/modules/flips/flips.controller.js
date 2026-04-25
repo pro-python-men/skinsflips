@@ -134,11 +134,35 @@ export const getBestFlips = asyncHandler(async (req, res) => {
       ? req.query.includeLowLiquidity
       : undefined;
 
+  const rawBuySources =
+    req?.query && (typeof req.query.buySources === "string" || Array.isArray(req.query.buySources))
+      ? req.query.buySources
+      : req?.query && (typeof req.query.buySource === "string" || Array.isArray(req.query.buySource))
+        ? req.query.buySource
+        : undefined;
+
+  const buySourcesListRaw = Array.isArray(rawBuySources)
+    ? rawBuySources.flatMap((v) => String(v || "").split(","))
+    : typeof rawBuySources === "string"
+      ? rawBuySources.split(",")
+      : [];
+
+  const buySources = Array.from(
+    new Set(
+      buySourcesListRaw
+        .map((v) => String(v || "").trim().toLowerCase())
+        .filter(Boolean)
+        .map((v) => (v === "buffmarket" ? "buff" : v))
+        .filter((v) => v === "csfloat" || v === "skinport" || v === "buff")
+    )
+  );
+
   const data = await getBestFlipsReal({
     maxBuyPrice,
     minProfitUsd,
     minProfitPercent,
-    includeLowLiquidity
+    includeLowLiquidity,
+    buySources: buySources.length > 0 ? buySources : undefined
   });
   res.json(data);
 });
