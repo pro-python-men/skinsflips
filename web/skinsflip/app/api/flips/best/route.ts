@@ -32,6 +32,8 @@ function normalizePayload(data: unknown) {
     name: String(f.name ?? f.itemName),
     buyPrice: Number(f.buyPrice),
     sellPrice: Number(f.sellPrice),
+    marketplaceFee: f.marketplaceFee == null ? undefined : Number(f.marketplaceFee),
+    marketplaceFeeRate: f.marketplaceFeeRate == null ? undefined : Number(f.marketplaceFeeRate),
     netSell: f.netSell == null ? undefined : Number(f.netSell),
     profit: Number(f.profit),
     roi: Number(f.roi ?? f.profitPercent ?? 0),
@@ -51,6 +53,10 @@ function normalizePayload(data: unknown) {
     salesLast7d: f.salesLast7d == null ? undefined : Number(f.salesLast7d),
     salesLast30d: f.salesLast30d == null ? undefined : Number(f.salesLast30d),
     stabilityScore: f.stabilityScore == null ? undefined : Number(f.stabilityScore),
+    priceLastUpdated: f.priceLastUpdated == null ? undefined : Number(f.priceLastUpdated),
+    salesDataLastUpdated:
+      f.salesDataLastUpdated == null ? undefined : Number(f.salesDataLastUpdated),
+    dataStatus: f.dataStatus == null ? undefined : String(f.dataStatus),
     createdAt: f.createdAt == null ? undefined : String(f.createdAt)
   }));
 
@@ -104,6 +110,10 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ...lastSuccessfulPayload,
+        flips: lastSuccessfulPayload.flips.map((flip) => ({
+          ...flip,
+          dataStatus: "last_successful_scan"
+        })),
         isCached: true,
         lastUpdated: lastSuccessfulPayload.lastUpdated
       },

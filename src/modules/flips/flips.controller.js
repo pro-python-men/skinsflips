@@ -133,6 +133,8 @@ export const getBestFlips = asyncHandler(async (req, res) => {
     req?.query && typeof req.query.includeLowLiquidity === "string"
       ? req.query.includeLowLiquidity
       : undefined;
+  const mode =
+    req?.query && typeof req.query.mode === "string" ? req.query.mode : undefined;
 
   const rawBuySources =
     req?.query && (typeof req.query.buySources === "string" || Array.isArray(req.query.buySources))
@@ -162,6 +164,7 @@ export const getBestFlips = asyncHandler(async (req, res) => {
     minProfitUsd,
     minProfitPercent,
     includeLowLiquidity,
+    mode,
     buySources: buySources.length > 0 ? buySources : undefined
   });
   res.json(data);

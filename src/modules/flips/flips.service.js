@@ -390,6 +390,38 @@ function liquidityLabelFromSalesOrListings({ salesLast7d, listingCount }) {
   return "LOW";
 }
 
+const BALANCED_MIN_PROFIT_PERCENT = 5;
+const AGGRESSIVE_MIN_PROFIT_PERCENT = 3;
+const AGGRESSIVE_MIN_PROFIT_CENTS = 25;
+const CONSERVATIVE_MIN_PROFIT_PERCENT = BALANCED_MIN_PROFIT_PERCENT + 3;
+
+const RISK_MODE_CONFIG = {
+  conservative: {
+    includeLowLiquidity: false,
+    minProfitPercent: CONSERVATIVE_MIN_PROFIT_PERCENT,
+    minLiquidity: "HIGH"
+  },
+  balanced: {
+    includeLowLiquidity: false,
+    minProfitPercent: BALANCED_MIN_PROFIT_PERCENT,
+    minLiquidity: null
+  },
+  aggressive: {
+    includeLowLiquidity: true,
+    minProfitPercent: AGGRESSIVE_MIN_PROFIT_PERCENT,
+    minProfitCents: AGGRESSIVE_MIN_PROFIT_CENTS,
+    minLiquidity: null
+  }
+};
+
+function normalizeRiskMode(mode) {
+  const normalized = typeof mode === "string" ? mode.trim().toLowerCase() : "";
+  if (normalized === "conservative" || normalized === "balanced" || normalized === "aggressive") {
+    return normalized;
+  }
+  return "balanced";
+}
+
 function buildOpportunity({
   name,
   listingCount,
@@ -402,10 +434,14 @@ function buildOpportunity({
   minProfitCents,
   minProfitPercent,
   includeLowLiquidity,
+  minLiquidity,
   salesLast7d,
   salesLast30d,
   stabilityScore,
   sellWindow,
+  priceLastUpdated,
+  salesDataLastUpdated,
+  sourceDataCached,
   debugSink
 }) {
   const debug = typeof debugSink === "function" ? debugSink : null;
@@ -415,7 +451,8 @@ function buildOpportunity({
     return null;
   }
 
-  const netSellCents = sellCents - feeCents(sellCents, sellFeeRate, "ceil");
+  const marketplaceFeeCents = feeCents(sellCents, sellFeeRate, "ceil");
+  const netSellCents = sellCents - marketplaceFeeCents;
   const profitCents = netSellCents - buyCents;
   if (profitCents <= 0) {
     if (debug) debug("profit_non_positive");
@@ -450,6 +487,11 @@ function buildOpportunity({
   });
 
   const allowLow = includeLowLiquidity === true;
+  if (minLiquidity === "HIGH" && liquidity !== "HIGH") {
+    if (debug) debug("liquidity_not_high");
+    return null;
+  }
+
   if (!allowLow && liquidity === "LOW") {
     if (debug) debug("liquidity_low");
     return null;
@@ -469,6 +511,8 @@ function buildOpportunity({
     name,
     buyPrice: buyCents / 100,
     sellPrice: sellCents / 100,
+    marketplaceFee: marketplaceFeeCents / 100,
+    marketplaceFeeRate: Number(sellFeeRate) || 0,
     netSell: netSellCents / 100,
     profit: profitCents / 100,
     profitPercent,
@@ -483,7 +527,12 @@ function buildOpportunity({
     sellWindow: typeof sellWindow === "string" ? sellWindow : undefined,
     salesLast7d: Number.isFinite(Number(salesLast7d)) ? Number(salesLast7d) : undefined,
     salesLast30d: Number.isFinite(Number(salesLast30d)) ? Number(salesLast30d) : undefined,
-    stabilityScore: Number.isFinite(Number(stabilityScore)) ? Number(stabilityScore) : undefined
+    stabilityScore: Number.isFinite(Number(stabilityScore)) ? Number(stabilityScore) : undefined,
+    priceLastUpdated: Number.isFinite(Number(priceLastUpdated)) ? Number(priceLastUpdated) : undefined,
+    salesDataLastUpdated: Number.isFinite(Number(salesDataLastUpdated))
+      ? Number(salesDataLastUpdated)
+      : undefined,
+    dataStatus: sourceDataCached === true ? "cached" : undefined
   };
 }
 
@@ -671,20 +720,31 @@ export async function getBestFlipsReal({
   minProfitUsd,
   minProfitPercent,
   includeLowLiquidity,
+  mode,
   buySources
 } = {}) {
   const now = Date.now();
+  const riskMode = normalizeRiskMode(mode);
+  const riskModeConfig = RISK_MODE_CONFIG[riskMode];
   const maxBuyCents = toOptionalUsdCents(maxBuyPrice);
-  const includeLow = toOptionalBool(includeLowLiquidity) === true;
+  const explicitIncludeLow = toOptionalBool(includeLowLiquidity);
+  const includeLow =
+    explicitIncludeLow === null ? riskModeConfig.includeLowLiquidity : explicitIncludeLow === true;
   const requestedMinProfitCents = toOptionalUsdCents(minProfitUsd);
   const requiredMinProfitCents =
-    requestedMinProfitCents ?? (maxBuyCents ? minProfitCentsFromBudget(maxBuyCents) : 200);
-  const requiredMinProfitPercent = toOptionalPercent(minProfitPercent) ?? 5;
+    requestedMinProfitCents ??
+    riskModeConfig.minProfitCents ??
+    (maxBuyCents ? minProfitCentsFromBudget(maxBuyCents) : 200);
+  const requiredMinProfitPercent =
+    toOptionalPercent(minProfitPercent) ?? riskModeConfig.minProfitPercent;
+  const requiredMinLiquidity = riskModeConfig.minLiquidity;
 
   const cacheKey = JSON.stringify({
+    riskMode,
     maxBuyCents: maxBuyCents || null,
     minProfitCents: requiredMinProfitCents,
     minProfitPercent: requiredMinProfitPercent,
+    minLiquidity: requiredMinLiquidity,
     includeLowLiquidity: includeLow,
     buySources:
       Array.isArray(buySources) && buySources.length > 0
@@ -701,7 +761,12 @@ export async function getBestFlipsReal({
   });
   const cached = bestFlipsCache.get(cacheKey) || null;
   if (cached && cached.data && now - cached.at < CACHE_MS) {
-    return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: false };
+    return {
+      flips: cached.data.map((flip) => ({ ...flip, dataStatus: "cached" })),
+      isCached: true,
+      lastUpdated: cached.at,
+      rateLimited: false
+    };
   }
 
   try {
@@ -845,6 +910,7 @@ export async function getBestFlipsReal({
         .filter((n) => typeof n === "string" && n.trim())
         .slice(0, maxUnique);
   const skinportSalesHistory = [];
+  const salesHistoryMetaByName = new Map();
   for (let i = 0; i < marketHashNames.length; i += 50) {
     const chunk = marketHashNames.slice(i, i + 50);
     const partWrap = await fetchSkinportSalesHistory({
@@ -853,6 +919,12 @@ export async function getBestFlipsReal({
       marketHashNames: chunk
     });
     if (partWrap?.meta?.rateLimited) rateLimitedHit = true;
+    for (const chunkName of chunk) {
+      salesHistoryMetaByName.set(chunkName, {
+        lastUpdated: partWrap?.meta?.lastUpdated ?? null,
+        isCached: Boolean(partWrap?.meta?.isCached || partWrap?.meta?.rateLimited)
+      });
+    }
     const part = Array.isArray(partWrap?.data) ? partWrap.data : [];
     skinportSalesHistory.push(...part);
   }
@@ -898,6 +970,9 @@ export async function getBestFlipsReal({
 
     const stabilityScore = stabilityScoreFromSalesStats(stats);
     const listingCount = item ? Number(item.quantity ?? 0) : 0;
+    const salesMeta = salesHistoryMetaByName.get(name) || null;
+    const salesDataLastUpdated = salesMeta?.lastUpdated ?? null;
+    const salesDataCached = Boolean(salesMeta?.isCached);
 
     if (enableSkinportBuy) {
       const skinportBuyCents = item ? toCentsFromUsdFloat(item.min_price) : null;
@@ -910,6 +985,7 @@ export async function getBestFlipsReal({
         minProfitCents: requiredMinProfitCents,
         minProfitPercent: requiredMinProfitPercent,
         includeLowLiquidity: includeLow,
+        minLiquidity: requiredMinLiquidity,
         listingCount,
         sourceBuy: "Skinport",
         sourceSell: "Skinport",
@@ -917,6 +993,11 @@ export async function getBestFlipsReal({
         salesLast30d: sales30d,
         stabilityScore,
         sellWindow: pickedSell.sourceWindow,
+        priceLastUpdated: skinportItemsWrap?.meta?.lastUpdated ?? null,
+        salesDataLastUpdated,
+        sourceDataCached: Boolean(
+          skinportItemsWrap?.meta?.isCached || skinportItemsWrap?.meta?.rateLimited || salesDataCached
+        ),
         debugSink: debug ? (reason) => debugHit(`Skinport->Skinport:${reason}`) : undefined
       });
       if (skinportDeal) out.push(skinportDeal);
@@ -983,6 +1064,7 @@ export async function getBestFlipsReal({
     const name = row.name;
 
     let buffGoods = null;
+    let buffmarketMeta = null;
     try {
       const wrap = await fetchBuffmarketGoodsSearchCached({
         search: name,
@@ -990,6 +1072,7 @@ export async function getBestFlipsReal({
         pageSize: 20
       });
       buffGoods = wrap?.data || null;
+      buffmarketMeta = wrap?.meta || null;
     } catch (e) {
       buffGoods = null;
       buffmarketFetchErrors += 1;
@@ -1015,6 +1098,7 @@ export async function getBestFlipsReal({
       minProfitCents: requiredMinProfitCents,
       minProfitPercent: requiredMinProfitPercent,
       includeLowLiquidity: includeLow,
+      minLiquidity: requiredMinLiquidity,
       listingCount: row.listingCount,
       sourceBuy: "BUFF Market",
       sourceSell: "Skinport",
@@ -1022,6 +1106,13 @@ export async function getBestFlipsReal({
       salesLast30d: row.sales30d,
       stabilityScore: row.stabilityScore,
       sellWindow: row.pickedSell.sourceWindow,
+      priceLastUpdated: buffmarketMeta?.lastUpdated ?? null,
+      salesDataLastUpdated: salesHistoryMetaByName.get(name)?.lastUpdated ?? null,
+      sourceDataCached: Boolean(
+        buffmarketMeta?.isCached ||
+          buffmarketMeta?.rateLimited ||
+          salesHistoryMetaByName.get(name)?.isCached
+      ),
       debugSink: debug ? (reason) => debugHit(`BUFF Market->Skinport:${reason}`) : undefined
     });
     if (buffDeal) out.push(buffDeal);
@@ -1033,6 +1124,7 @@ export async function getBestFlipsReal({
 
     // Fetch actual lowest 1–3 listings for buyPrice.
     let perItemListings = null;
+    let perItemMeta = null;
     try {
       csfloatPerItemFetches += 1;
       const perItemWrap = await fetchCsfloatListingsCached({
@@ -1043,6 +1135,7 @@ export async function getBestFlipsReal({
       });
       if (perItemWrap?.meta?.rateLimited) rateLimitedHit = true;
       perItemListings = perItemWrap?.data || null;
+      perItemMeta = perItemWrap?.meta || null;
     } catch {
       perItemListings = null;
     }
@@ -1061,6 +1154,7 @@ export async function getBestFlipsReal({
       minProfitCents: requiredMinProfitCents,
       minProfitPercent: requiredMinProfitPercent,
       includeLowLiquidity: includeLow,
+      minLiquidity: requiredMinLiquidity,
       listingCount: row.listingCount,
       sourceBuy: "CSFloat",
       sourceSell: "Skinport",
@@ -1068,6 +1162,11 @@ export async function getBestFlipsReal({
       salesLast30d: row.sales30d,
       stabilityScore: row.stabilityScore,
       sellWindow: row.pickedSell.sourceWindow,
+      priceLastUpdated: perItemMeta?.lastUpdated ?? null,
+      salesDataLastUpdated: salesHistoryMetaByName.get(name)?.lastUpdated ?? null,
+      sourceDataCached: Boolean(
+        perItemMeta?.isCached || perItemMeta?.rateLimited || salesHistoryMetaByName.get(name)?.isCached
+      ),
       debugSink: debug ? (reason) => debugHit(`CSFloat->Skinport:${reason}`) : undefined
     });
       if (csfloatDeal) out.push(csfloatDeal);
@@ -1096,7 +1195,12 @@ export async function getBestFlipsReal({
 
   if (rateLimitedHit) {
     if (cached && cached.data) {
-      return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: true };
+      return {
+        flips: cached.data.map((flip) => ({ ...flip, dataStatus: "cached" })),
+        isCached: true,
+        lastUpdated: cached.at,
+        rateLimited: true
+      };
     }
 
     // Don't overwrite the cache with an empty response if we're rate-limited.
@@ -1115,7 +1219,12 @@ export async function getBestFlipsReal({
       msg.toLowerCase().includes("rate limited");
 
     if (cached && cached.data)
-      return { flips: cached.data, isCached: true, lastUpdated: cached.at, rateLimited: is429 };
+      return {
+        flips: cached.data.map((flip) => ({ ...flip, dataStatus: "cached" })),
+        isCached: true,
+        lastUpdated: cached.at,
+        rateLimited: is429
+      };
     if (is429) return { flips: [], isCached: false, lastUpdated: null, rateLimited: true };
     throw e;
   }

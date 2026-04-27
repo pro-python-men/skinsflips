@@ -4,6 +4,8 @@ export type Flip = {
   name: string
   buyPrice: number
   sellPrice: number
+  marketplaceFee?: number
+  marketplaceFeeRate?: number
   netSell?: number
   profit: number
   roi: number
@@ -20,6 +22,9 @@ export type Flip = {
   salesLast7d?: number
   salesLast30d?: number
   stabilityScore?: number
+  priceLastUpdated?: number
+  salesDataLastUpdated?: number
+  dataStatus?: "cached" | "last_successful_scan"
   createdAt?: string
 }
 
