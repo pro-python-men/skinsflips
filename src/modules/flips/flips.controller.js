@@ -120,53 +120,7 @@ export const markFlipAsCompleted = asyncHandler(async (req, res) => {
 });
 
 export const getBestFlips = asyncHandler(async (req, res) => {
-  const maxBuyPrice =
-    req?.query && typeof req.query.maxBuyPrice === "string" ? req.query.maxBuyPrice : undefined;
-
-  const minProfitUsd =
-    req?.query && typeof req.query.minProfitUsd === "string" ? req.query.minProfitUsd : undefined;
-  const minProfitPercent =
-    req?.query && typeof req.query.minProfitPercent === "string"
-      ? req.query.minProfitPercent
-      : undefined;
-  const includeLowLiquidity =
-    req?.query && typeof req.query.includeLowLiquidity === "string"
-      ? req.query.includeLowLiquidity
-      : undefined;
-  const mode =
-    req?.query && typeof req.query.mode === "string" ? req.query.mode : undefined;
-
-  const rawBuySources =
-    req?.query && (typeof req.query.buySources === "string" || Array.isArray(req.query.buySources))
-      ? req.query.buySources
-      : req?.query && (typeof req.query.buySource === "string" || Array.isArray(req.query.buySource))
-        ? req.query.buySource
-        : undefined;
-
-  const buySourcesListRaw = Array.isArray(rawBuySources)
-    ? rawBuySources.flatMap((v) => String(v || "").split(","))
-    : typeof rawBuySources === "string"
-      ? rawBuySources.split(",")
-      : [];
-
-  const buySources = Array.from(
-    new Set(
-      buySourcesListRaw
-        .map((v) => String(v || "").trim().toLowerCase())
-        .filter(Boolean)
-        .map((v) => (v === "buffmarket" ? "buff" : v))
-        .filter((v) => v === "csfloat" || v === "skinport" || v === "buff")
-    )
-  );
-
-  const data = await getBestFlipsReal({
-    maxBuyPrice,
-    minProfitUsd,
-    minProfitPercent,
-    includeLowLiquidity,
-    mode,
-    buySources: buySources.length > 0 ? buySources : undefined
-  });
+  const data = await getBestFlipsReal();
   res.json(data);
 });
 

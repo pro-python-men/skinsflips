@@ -63,8 +63,13 @@ function normalizePayload(data: unknown) {
   return {
     flips: normalizedFlips,
     isCached: Boolean((payload as any).isCached),
+    rateLimited: Boolean((payload as any).rateLimited),
     lastUpdated:
-      (payload as any).lastUpdated == null ? null : Number((payload as any).lastUpdated)
+      (payload as any).lastUpdated == null ? null : Number((payload as any).lastUpdated),
+    scanMeta:
+      (payload as any).scanMeta && typeof (payload as any).scanMeta === "object"
+        ? (payload as any).scanMeta
+        : null
   };
 }
 

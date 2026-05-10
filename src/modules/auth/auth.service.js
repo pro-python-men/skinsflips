@@ -10,6 +10,7 @@ import {
 } from "./auth.repository.js";
 
 const STEAM_WEB_API_KEY = process.env.STEAM_WEB_API_KEY || "";
+const STEAM_OPENID_ENDPOINT = "https://steamcommunity.com/openid/login";
 
 async function fetchSteamProfile(steamId) {
   try {
@@ -105,7 +106,53 @@ function isValidSteamId(steamId) {
   return typeof steamId === "string" && /^[0-9]{17}$/.test(steamId);
 }
 
-export async function steamExchangeUser({ steamId }) {
+function getSteamIdFromClaimedId(claimedId) {
+  if (typeof claimedId !== "string") return null;
+
+  const match = claimedId.match(/^https?:\/\/steamcommunity\.com\/openid\/id\/([0-9]{17})$/);
+  return match?.[1] || null;
+}
+
+async function verifySteamOpenId(openidParams) {
+  const params = openidParams && typeof openidParams === "object" ? openidParams : null;
+  if (!params) throw ApiError.badRequest("Missing Steam OpenID response");
+
+  const mode = params["openid.mode"];
+  const claimedId = params["openid.claimed_id"];
+  const identity = params["openid.identity"];
+  const steamId = getSteamIdFromClaimedId(claimedId);
+
+  if (mode !== "id_res" || !steamId || identity !== claimedId) {
+    throw ApiError.badRequest("Invalid Steam OpenID response");
+  }
+
+  const body = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (!key.startsWith("openid.") || value === undefined || value === null) continue;
+    body.set(key, String(value));
+  }
+  body.set("openid.mode", "check_authentication");
+
+  const res = await fetch(STEAM_OPENID_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
+  if (!res.ok) throw ApiError.unauthorized("Steam OpenID verification failed");
+
+  const text = await res.text();
+  if (!/^is_valid:true$/m.test(text)) {
+    throw ApiError.unauthorized("Steam OpenID verification failed");
+  }
+
+  return steamId;
+}
+
+export async function steamExchangeUser({ openidParams }) {
+  const steamId = await verifySteamOpenId(openidParams);
   if (!isValidSteamId(steamId)) throw ApiError.badRequest("Invalid steamId");
 
   let user = await findUserBySteamId(steamId);

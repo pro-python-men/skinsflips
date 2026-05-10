@@ -22,8 +22,8 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const steamExchange = asyncHandler(async (req, res) => {
-  const { steamId } = req.body || {};
-  const result = await steamExchangeUser({ steamId });
+  const { openidParams } = req.body || {};
+  const result = await steamExchangeUser({ openidParams });
   setAuthCookie(res, result.token);
   res.status(200).json(result);
 });

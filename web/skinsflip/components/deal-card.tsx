@@ -193,6 +193,12 @@ export function DealCard({
       : dataStatus === "cached"
         ? "Cached data"
         : null
+  const routeText = `Buy on ${sourceBuy} -> Sell on ${sourceSell}`
+  const whyThisFlipText = getWhyThisFlipText()
+  const urgencyText = getUrgencyText()
+  const liquidityDecisionText = getLiquidityDecisionText()
+  const realMarketText = getRealMarketText()
+  const scarcityText = getScarcityText()
   const metaText = [
     `Rank ${rankScore ?? "-"}`,
     `Liquidity ${liquidityText}`,
@@ -294,11 +300,11 @@ export function DealCard({
       <p className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">Profit breakdown</p>
       <div className="mt-3 space-y-2 text-sm">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Buy</span>
+          <span className="text-muted-foreground">Buy on {sourceBuy}</span>
           <span className="font-semibold text-foreground">{formatCurrency(buyPrice)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Sell (median)</span>
+          <span className="text-muted-foreground">Sell on {sourceSell}</span>
           <span className="font-semibold text-foreground">{formatCurrency(sellPrice)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -337,6 +343,7 @@ export function DealCard({
         <div className="space-y-5">
           <div className="space-y-1">
             <p className="text-lg font-semibold text-white">{name}</p>
+            <p className="text-xs font-medium text-emerald-300">{routeText}</p>
             <p className="text-sm text-muted-foreground">
               Buy {formatCurrency(buyPrice)} {"\u2192"} Sell {formatCurrency(sellPrice)}
             </p>
@@ -374,11 +381,11 @@ export function DealCard({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Buy price</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Buy on {sourceBuy}</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(buyPrice)}</p>
             </div>
             <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Target sell</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sell on {sourceSell}</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(sellPrice)}</p>
             </div>
             <div className="rounded-xl border border-border/60 bg-background/20 p-4">
@@ -414,6 +421,7 @@ export function DealCard({
         {/* Header with name and price flow */}
         <div className="space-y-2">
           <p className="text-lg font-semibold text-white">{name}</p>
+          <p className="text-xs font-medium text-emerald-300">{routeText}</p>
           <p className="text-xs text-muted-foreground">
             Buy {formatCurrency(buyPrice)} {"\u2192"} Est. sell {formatCurrency(sellPrice)}
           </p>

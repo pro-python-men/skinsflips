@@ -1,17 +1,15 @@
+import { dirname } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const rootDir = dirname(fileURLToPath(import.meta.url))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },
-  experimental: {
-    turbo: false,
-  },
-  webpack: (config, options) => {
-    // ensure webpack mode is used explicitly
-    return config
+  turbopack: {
+    root: rootDir,
   },
 }
 

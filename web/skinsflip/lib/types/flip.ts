@@ -32,5 +32,12 @@ export type BestFlipsResponse = {
   flips: Flip[]
   isCached: boolean
   lastUpdated: number | null
+  rateLimited?: boolean
+  scanMeta?: {
+    enabledSources?: string[]
+    disabledSources?: string[]
+    counts?: Record<string, number>
+    filteredReasons?: Array<{ reason: string; count: number }>
+  } | null
 }
 
