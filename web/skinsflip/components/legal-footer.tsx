@@ -1,0 +1,28 @@
+import Link from "next/link"
+
+const legalLinks = [
+  { href: "/legal/privacy", label: "Privacy Policy" },
+  { href: "/legal/cookies", label: "Cookie Policy" },
+  { href: "/legal/terms", label: "Terms of Service" },
+]
+
+export function LegalFooter() {
+  return (
+    <footer className="border-t border-border/80 bg-background">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 text-sm text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <p>© {new Date().getFullYear()} SkinFlip. All rights reserved.</p>
+        <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {legalLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </footer>
+  )
+}

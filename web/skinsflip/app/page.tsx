@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, DollarSign, Search, TrendingUp } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
+import { LegalFooter } from "@/components/legal-footer"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -378,6 +379,7 @@ export default function HomePage() {
           </div>
         </section>
       </div>
+      <LegalFooter />
     </main>
   )
 }

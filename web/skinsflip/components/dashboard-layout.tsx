@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-context"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
+import { LegalFooter } from "@/components/legal-footer"
 import { cn } from "@/lib/utils"
 
 interface DashboardLayoutProps {
@@ -68,7 +69,10 @@ export function DashboardLayout({ children, title, requireAuth }: DashboardLayou
           onMenuClick={() => setIsMobileOpen(true)}
           showMenuButton
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-6">{children}</div>
+          <LegalFooter />
+        </main>
       </div>
     </div>
   )
