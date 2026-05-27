@@ -55,18 +55,22 @@ function LoginForm() {
           body: JSON.stringify({ openidParams }),
         })
 
+        const data = await res.json().catch(() => null)
+
         if (res.ok) {
           window.location.href = "/dashboard"
           return
         }
 
-        throw new Error("Steam login failed")
+        throw new Error(data?.message || "Steam login failed")
       } catch (error) {
         console.error("Exchange failed", error)
-        setSteamError("Steam login failed")
+        const message =
+          error instanceof Error ? error.message : "Steam login failed"
+        setSteamError(message)
         toast({
           title: "Steam login failed",
-          description: "Spróbuj ponownie za chwilę.",
+          description: message,
           variant: "destructive",
         })
       }
