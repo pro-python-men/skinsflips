@@ -46,7 +46,7 @@ function getSellRecommendation(row: InventoryRow) {
 
   return {
     label: "Hold",
-    className: "border-border/60 bg-background/20 text-muted-foreground",
+    className: "border-white/10 bg-white/4 text-muted-foreground",
   };
 }
 
@@ -114,7 +114,6 @@ export default function InventoryPage() {
       .sort((a, b) => b.profit - a.profit);
 
     const profitableRows = rows.filter((row) => row.profit > 0);
-    const holdRows = rows.filter((row) => row.profit <= 0);
     const topOpportunity = profitableRows[0] ?? rows[0] ?? null;
     const totalPotentialProfit = profitableRows.reduce((sum, row) => sum + row.profit, 0);
     const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
@@ -122,7 +121,6 @@ export default function InventoryPage() {
     return {
       rows,
       profitableRows,
-      holdRows,
       topOpportunity,
       totalPotentialProfit,
       totalValue,
@@ -151,32 +149,37 @@ export default function InventoryPage() {
   return (
     <DashboardLayout title="Inventory" requireAuth>
       <div className="space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Best sell opportunities in your inventory
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Start with the skins showing the strongest profit right now.
-          </p>
-        </header>
+        <section className="surface-panel rounded-[2.1rem] p-6">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
+              Exit planning
+            </p>
+            <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
+              Best sell opportunities in your inventory
+            </h1>
+            <p className="max-w-[62ch] text-sm text-muted-foreground">
+              Start with the skins showing the strongest profit right now, then work down the board based on your current exit options.
+            </p>
+          </div>
+        </section>
 
         {error ? (
-          <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
+          <div className="surface-panel rounded-[1.8rem] border-destructive/20 p-4 text-sm text-destructive">
             {error}
           </div>
         ) : null}
 
         {loading ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+          <div className="surface-panel rounded-[2rem] p-6 text-sm text-muted-foreground">
             Loading inventory opportunities...
           </div>
         ) : computed.rows.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-8">
+          <div className="surface-panel rounded-[2rem] p-8">
             <div className="mx-auto max-w-2xl space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
                 Turn inventory into sell decisions
               </p>
-              <p className="text-2xl font-semibold text-foreground">
+              <p className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
                 See where each skin is most worth selling before you list anything
               </p>
               <p className="text-sm text-muted-foreground">
@@ -185,6 +188,7 @@ export default function InventoryPage() {
               <div className="pt-2">
                 <Button
                   type="button"
+                  className="rounded-full bg-[#dfffc0] px-5 text-black hover:bg-[#cbff9e]"
                   onClick={() => {
                     document.getElementById("add-inventory-item")?.scrollIntoView({
                       behavior: "smooth",
@@ -200,13 +204,13 @@ export default function InventoryPage() {
         ) : (
           <>
             {computed.topOpportunity ? (
-              <section className="rounded-2xl border border-emerald-500/25 bg-card p-6">
+              <section className="surface-panel rounded-[2rem] p-6">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                   <div className="space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
                       Best sell opportunity
                     </div>
-                    <h2 className="text-2xl font-semibold text-foreground">
+                    <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
                       {computed.topOpportunity.skin}
                     </h2>
                     <p className="text-sm text-muted-foreground">
@@ -216,8 +220,8 @@ export default function InventoryPage() {
 
                   <div className="space-y-2 text-left lg:text-right">
                     <div
-                      className={`text-4xl font-bold ${
-                        computed.topOpportunity.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                      className={`text-4xl font-semibold tracking-[-0.05em] ${
+                        computed.topOpportunity.profit >= 0 ? "text-emerald-300" : "text-rose-300"
                       }`}
                     >
                       {formatCurrency(computed.topOpportunity.profit)}
@@ -229,7 +233,7 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="mt-6 grid gap-3 md:grid-cols-4">
-                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Buy price
                     </div>
@@ -238,7 +242,7 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Current best sell
                     </div>
@@ -247,7 +251,7 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Quantity
                     </div>
@@ -256,7 +260,7 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Current value
                     </div>
@@ -266,7 +270,7 @@ export default function InventoryPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-col gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mt-6 flex flex-col gap-3 rounded-[1.6rem] border border-emerald-500/20 bg-emerald-500/5 p-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">
                       Best marketplace to sell right now: {SELL_MARKETPLACE}
@@ -275,7 +279,7 @@ export default function InventoryPage() {
                       Current tracked sell price points to the strongest exit opportunity here.
                     </p>
                   </div>
-                  <Button asChild className="rounded-xl bg-green-500 px-6 text-black hover:bg-green-600">
+                  <Button asChild className="rounded-full bg-[#dfffc0] px-6 text-black hover:bg-[#cbff9e]">
                     <a href={SELL_MARKETPLACE_HREF} target="_blank" rel="noreferrer">
                       Sell on {SELL_MARKETPLACE} →
                     </a>
@@ -286,10 +290,10 @@ export default function InventoryPage() {
 
             <section className="space-y-4">
               <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
                   Sell decisions
                 </div>
-                <h3 className="text-xl font-semibold text-foreground">
+                <h3 className="text-xl font-semibold tracking-[-0.04em] text-foreground">
                   Where to sell each item next
                 </h3>
                 <p className="text-sm text-muted-foreground">
@@ -305,13 +309,13 @@ export default function InventoryPage() {
                   return (
                     <article
                       key={row.id}
-                      className="rounded-2xl border border-border bg-card p-6"
+                      className="surface-panel rounded-[1.9rem] p-6"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <h4 className="text-lg font-semibold text-foreground">{row.skin}</h4>
+                          <h4 className="text-lg font-semibold tracking-[-0.03em] text-foreground">{row.skin}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Current value {formatCurrency(row.value)} · Qty {row.quantity}
+                            Current value {formatCurrency(row.value)} • Qty {row.quantity}
                           </p>
                         </div>
                         <div
@@ -322,7 +326,7 @@ export default function InventoryPage() {
                       </div>
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                        <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">
                             Buy price
                           </div>
@@ -331,7 +335,7 @@ export default function InventoryPage() {
                           </div>
                         </div>
 
-                        <div className="rounded-xl border border-border/60 bg-background/20 p-4">
+                        <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">
                             Current best sell
                           </div>
@@ -343,13 +347,13 @@ export default function InventoryPage() {
                           </div>
                         </div>
 
-                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                        <div className="rounded-[1.5rem] border border-emerald-500/20 bg-emerald-500/5 p-4">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">
                             Estimated profit
                           </div>
                           <div
                             className={`mt-2 text-lg font-semibold ${
-                              row.profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                              row.profit >= 0 ? "text-emerald-300" : "text-rose-300"
                             }`}
                           >
                             {formatCurrency(row.profit)}
@@ -360,7 +364,7 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      <div className="mt-5 flex flex-col gap-3 rounded-xl border border-border/60 bg-background/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="mt-5 flex flex-col gap-3 rounded-[1.6rem] border border-white/8 bg-white/4 p-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-foreground">
                             Recommended action
@@ -370,13 +374,13 @@ export default function InventoryPage() {
 
                         <div className="flex flex-col gap-2 sm:flex-row">
                           {decision.actionable ? (
-                            <Button asChild className="rounded-xl bg-green-500 text-black hover:bg-green-600">
+                            <Button asChild className="rounded-full bg-[#dfffc0] text-black hover:bg-[#cbff9e]">
                               <a href={SELL_MARKETPLACE_HREF} target="_blank" rel="noreferrer">
                                 {decision.title}
                               </a>
                             </Button>
                           ) : (
-                            <Button variant="secondary" className="rounded-xl" disabled>
+                            <Button variant="secondary" className="rounded-full" disabled>
                               {decision.title}
                             </Button>
                           )}
@@ -384,6 +388,7 @@ export default function InventoryPage() {
                           <Button
                             variant="secondary"
                             size="sm"
+                            className="rounded-full"
                             onClick={async () => {
                               setDeletingId(row.id);
                               try {
@@ -415,12 +420,12 @@ export default function InventoryPage() {
             </section>
 
             <section className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-card p-6">
+              <div className="surface-panel rounded-[1.9rem] p-6">
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
                     Portfolio signal
                   </div>
-                  <div className="mt-3 text-3xl font-bold text-foreground">
+                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">
                     {formatCurrency(computed.totalValue)}
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -429,24 +434,26 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                  Sellable profit now
+              <div className="surface-panel rounded-[1.9rem] p-6">
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/75">
+                    Sellable profit now
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-emerald-300">
+                    {formatCurrency(computed.totalPotentialProfit)}
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Total profit currently available across profitable positions.
+                  </p>
                 </div>
-                <div className="mt-3 text-3xl font-bold text-emerald-400">
-                  {formatCurrency(computed.totalPotentialProfit)}
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Total profit currently available across profitable positions.
-                </p>
               </div>
             </section>
           </>
         )}
 
-        <section id="add-inventory-item" className="rounded-2xl border border-border bg-card p-6">
+        <section id="add-inventory-item" className="surface-panel rounded-[2rem] p-6">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-foreground">Manage tracked inventory</h3>
+            <h3 className="text-lg font-semibold tracking-[-0.03em] text-foreground">Manage tracked inventory</h3>
             <p className="text-sm text-muted-foreground">
               Add another item only when you want this page to evaluate a new sell decision.
             </p>
@@ -503,6 +510,7 @@ export default function InventoryPage() {
               <Input
                 value={skin}
                 onChange={(e) => setSkin(e.target.value)}
+                className="rounded-2xl border-white/10 bg-white/4"
                 placeholder="AWP | Asiimov"
               />
             </div>
@@ -514,6 +522,7 @@ export default function InventoryPage() {
               <Input
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(e.target.value)}
+                className="rounded-2xl border-white/10 bg-white/4"
                 inputMode="decimal"
                 placeholder="0.00"
               />
@@ -526,6 +535,7 @@ export default function InventoryPage() {
               <Input
                 value={currentPrice}
                 onChange={(e) => setCurrentPrice(e.target.value)}
+                className="rounded-2xl border-white/10 bg-white/4"
                 inputMode="decimal"
                 placeholder="0.00"
               />
@@ -538,13 +548,14 @@ export default function InventoryPage() {
               <Input
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                className="rounded-2xl border-white/10 bg-white/4"
                 inputMode="numeric"
                 placeholder="1"
               />
             </div>
 
             <div className="md:col-span-4">
-              <Button type="submit" disabled={saving} className="w-full md:w-auto">
+              <Button type="submit" disabled={saving} className="w-full rounded-full bg-[#dfffc0] text-black hover:bg-[#cbff9e] md:w-auto">
                 {saving ? "Saving..." : "Add item"}
               </Button>
             </div>

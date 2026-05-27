@@ -69,8 +69,9 @@ export default function HomePage() {
   })
 
   const destination = user ? "/dashboard" : "/login"
-  const heroFlips = flips.slice(0, 3)
   const liveFlips = flips.slice(0, 5)
+  const heroFlip = liveFlips[0] ?? null
+  const sideFlips = liveFlips.slice(1)
 
   const goToDeals = () => {
     window.location.href = destination
@@ -204,8 +205,8 @@ export default function HomePage() {
   }, [lastUpdatedAt, updateIntervalMs])
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+    <main className="min-h-screen bg-transparent text-foreground">
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-black/35 backdrop-blur-xl">
         <div className="mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between px-6 lg:px-10">
           <a href="/" className="flex items-center">
             <img
@@ -218,7 +219,7 @@ export default function HomePage() {
           <div className="flex items-center">
             <a
               href="/login"
-              className="flex items-center gap-4 rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:scale-105 hover:bg-white/10"
+              className="flex items-center gap-4 rounded-full border border-white/10 bg-white/6 px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:scale-[1.02] hover:bg-white/10"
             >
               <img
                 src="/steam.png"
@@ -232,24 +233,25 @@ export default function HomePage() {
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="relative overflow-hidden rounded-[2rem] bg-[url('/awp-hero.png')] bg-cover bg-[72%_center] bg-no-repeat py-16 sm:py-18 lg:min-h-[64vh] lg:py-20">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0.82)_30%,rgba(0,0,0,0.52)_56%,rgba(0,0,0,0.12)_100%)]" />
+        <section className="relative overflow-hidden rounded-[2.4rem] border border-white/8 bg-[url('/awp-hero.png')] bg-cover bg-[72%_center] bg-no-repeat py-16 sm:py-18 lg:min-h-[72vh] lg:py-20">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,4,0.92)_0%,rgba(6,10,9,0.86)_30%,rgba(6,10,9,0.52)_58%,rgba(6,10,9,0.14)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(123,241,121,0.18),transparent_28%)]" />
 
           <div className="relative mx-auto flex min-h-[440px] max-w-[1240px] items-center px-6 sm:px-8 lg:min-h-[64vh] lg:px-10">
             <div className="flex max-w-[560px] flex-col gap-6 lg:max-w-[600px]">
-              <div className="inline-flex w-fit items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+              <div className="inline-flex w-fit items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">
                 Based on real sales data
               </div>
 
               <div className="flex flex-col gap-4">
-                <h1 className="text-4xl font-bold leading-[0.98] tracking-tight text-white sm:text-5xl lg:text-[4rem]">
+                <h1 className="text-4xl font-semibold leading-[0.94] tracking-[-0.06em] text-white sm:text-5xl lg:text-[4.35rem]">
                   Find profitable CS2 skin flips in seconds
                 </h1>
-                <p className="text-sm font-medium text-green-400 sm:text-base">
-                  Average flips: $5-$25 profit per trade
+                <p className="text-sm font-medium uppercase tracking-[0.22em] text-lime-200/90 sm:text-base">
+                  Average flips: $5-$25 per trade
                 </p>
                 <p className="max-w-[52ch] text-base leading-7 text-white/72 sm:text-lg">
-                  See exactly what to buy, where to buy it, and how much profit you’ll make — based on real sales data.
+                  See what to buy, where to buy it, and how much profit the spread leaves after fees, ranked by sellability.
                 </p>
               </div>
 
@@ -257,7 +259,7 @@ export default function HomePage() {
                 <Button
                   type="button"
                   onClick={goToDeals}
-                  className="h-14 rounded-xl bg-green-500 px-8 text-base font-semibold text-black shadow-[0_18px_50px_rgba(34,197,94,0.28)] transition hover:bg-green-600"
+                  className="h-14 rounded-full bg-[#dfffc0] px-8 text-base font-semibold text-black shadow-[0_18px_50px_rgba(191,255,146,0.24)] transition hover:bg-[#cbff9e]"
                 >
                   Find profitable flips
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -272,11 +274,22 @@ export default function HomePage() {
         </section>
 
         <section className="py-8 lg:py-10">
-          <div className="mb-5">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">Live opportunities</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{updatedLabel}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="text-xs font-medium text-muted-foreground">Buy from</span>
+          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
+                  Live board
+                </p>
+                <h2 className="text-3xl font-semibold tracking-[-0.05em] text-white">Current best flips</h2>
+                <p className="text-sm text-muted-foreground">
+                  Same board, same ranking logic as your main best-flips view.
+                </p>
+                <p className="text-sm text-muted-foreground">{updatedLabel}</p>
+              </div>
+            </div>
+
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Buy from</span>
               <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox
                   checked={buySources.csfloat}
@@ -305,51 +318,68 @@ export default function HomePage() {
                 BUFF
               </Label>
             </div>
-          </div>
 
-          {loading || error || liveFlips.length === 0 ? (
-            <div className="rounded-3xl border border-border bg-card p-8">
-              <p className="text-lg font-semibold text-foreground">Scanning market for new opportunities...</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Live flips update continuously as new profitable gaps are detected.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-3">
-              {liveFlips.map((flip, index) => (
-                <DealCard
-                  key={`live-${flip.id}-${index}`}
-                  {...flip}
-                  variant="landing"
-                  featured={index === 0}
-                  isBest={index === 0}
-                  buyHref={getBuyHref(flip) ?? undefined}
-                  buyDisabled={!getBuyHref(flip)}
-                  onTrack={() => {
-                    void trackFlip(flip)
-                  }}
-                  isTracking={Boolean(trackingIds[flip.id])}
-                  isTracked={Boolean(trackedIds[flip.id])}
-                />
-              ))}
-            </div>
-          )}
+            {loading || error || liveFlips.length === 0 ? (
+              <div className="rounded-[2rem] border border-white/8 bg-white/4 p-8">
+                <p className="text-lg font-semibold text-foreground">Scanning market for new opportunities...</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Live flips refresh continuously as new profitable gaps are detected.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {heroFlip ? (
+                  <DealCard
+                    {...heroFlip}
+                    variant="landing"
+                    featured
+                    isBest
+                    buyHref={getBuyHref(heroFlip) ?? undefined}
+                    buyDisabled={!getBuyHref(heroFlip)}
+                    onTrack={() => {
+                      void trackFlip(heroFlip)
+                    }}
+                    isTracking={Boolean(trackingIds[heroFlip.id])}
+                    isTracked={Boolean(trackedIds[heroFlip.id])}
+                  />
+                ) : null}
+
+                {sideFlips.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {sideFlips.map((flip, index) => (
+                      <DealCard
+                        key={`live-${flip.id}-${index}`}
+                        {...flip}
+                        buyHref={getBuyHref(flip) ?? undefined}
+                        buyDisabled={!getBuyHref(flip)}
+                        onTrack={() => {
+                          void trackFlip(flip)
+                        }}
+                        isTracking={Boolean(trackingIds[flip.id])}
+                        isTracked={Boolean(trackedIds[flip.id])}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="py-8 lg:py-10">
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
+          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
               How it works
             </p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {steps.map((step, index) => (
-                <div key={step.title} className="rounded-2xl border border-border/60 bg-background p-5">
+                <div key={step.title} className="rounded-[1.7rem] border border-white/8 bg-white/4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-200">
                       <step.icon className="h-4 w-4" />
                     </div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Step {index + 1}
                     </div>
                   </div>
@@ -361,8 +391,8 @@ export default function HomePage() {
         </section>
 
         <section className="py-8 lg:py-10">
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">
+          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
               Start finding profitable skins
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">Based on real sales data</p>
@@ -371,7 +401,7 @@ export default function HomePage() {
               <Button
                 type="button"
                 onClick={goToDeals}
-                className="rounded-xl bg-green-500 px-6 py-6 text-base font-semibold text-black transition hover:bg-green-600"
+                className="rounded-full bg-[#dfffc0] px-6 py-6 text-base font-semibold text-black transition hover:bg-[#cbff9e]"
               >
                 See live deals
               </Button>

@@ -45,20 +45,20 @@ function HistorySummaryCard({
   return (
     <div
       className={[
-        "rounded-xl border border-border bg-card p-6",
+        "surface-panel rounded-[1.8rem] p-6",
         tone === "profit" ? "shadow-[0_20px_60px_-35px_rgba(52,211,153,0.45)]" : "",
       ].join(" ")}
     >
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
       <p
         className={[
-          "mt-3 font-bold tracking-tight",
-          tone === "profit" ? "text-3xl text-emerald-400" : "text-2xl text-foreground",
+          "mt-3 font-semibold tracking-[-0.05em]",
+          tone === "profit" ? "text-4xl text-emerald-300" : "text-3xl text-foreground",
         ].join(" ")}
       >
         {value}
       </p>
-      {helper ? <p className="mt-2 text-sm text-emerald-400">{helper}</p> : null}
+      {helper ? <p className="mt-2 text-sm text-emerald-300">{helper}</p> : null}
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </div>
   )
@@ -242,13 +242,13 @@ export default function HistoryPage() {
   }
 
   const renderEmptyState = (title: string, description: string) => (
-    <div className="rounded-xl border border-border bg-card p-8 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+    <div className="surface-panel rounded-[2rem] p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/6">
         <History className="h-5 w-5 text-muted-foreground" />
       </div>
-      <h2 className="mt-4 text-2xl font-semibold text-foreground">{title}</h2>
+      <h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-foreground">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-      <Button asChild className="mt-6">
+      <Button asChild className="mt-6 rounded-full bg-[#dfffc0] px-5 text-black hover:bg-[#cbff9e]">
         <Link href="/best-flips">Go to Best Flips</Link>
       </Button>
     </div>
@@ -260,23 +260,37 @@ export default function HistoryPage() {
   return (
     <DashboardLayout title="Tracking" requireAuth>
       <div className="space-y-6">
+        <section className="surface-panel rounded-[2.1rem] p-6">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
+              Trading journal
+            </p>
+            <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
+              Track active flips and realized exits
+            </h1>
+            <p className="max-w-[62ch] text-sm text-muted-foreground">
+              This view helps you manage current holds, mark completed sells, and review actual performance over time.
+            </p>
+          </div>
+        </section>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <HistorySummaryCard
             title="Total Profit"
             value={formatCurrency(stats.totalProfit)}
-            helper={`${stats.totalProfit >= 0 ? "+" : ""}${formatCurrency(stats.totalProfit)} profit earned`}
+            helper={`${stats.totalProfit >= 0 ? "+" : ""}${formatCurrency(stats.totalProfit)} realized`}
             description="All realized profit from completed flips"
             tone="profit"
           />
           <HistorySummaryCard
             title="Average ROI"
             value={formatPercent(stats.averageROI, 1)}
-            description="Your average return per completed flip"
+            description="Average return per completed flip"
           />
           <HistorySummaryCard
             title="Total Flips"
             value={stats.totalFlips.toString()}
-            description="Completed trades"
+            description="Completed trades recorded so far"
           />
         </div>
 
@@ -290,14 +304,14 @@ export default function HistoryPage() {
         />
 
         {error ? (
-          <div className="rounded-xl border border-destructive/30 bg-card p-4 text-sm text-destructive">
+          <div className="surface-panel rounded-[1.8rem] border-destructive/20 p-4 text-sm text-destructive">
             {error}
           </div>
         ) : null}
 
         {loading ? (
-          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-            Loading flips…
+          <div className="surface-panel rounded-[1.8rem] p-5 text-sm text-muted-foreground">
+            Loading flips...
           </div>
         ) : null}
 
@@ -309,10 +323,10 @@ export default function HistoryPage() {
         ) : null}
 
         {!loading && flips.length > 0 && filteredFlips.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <h2 className="text-2xl font-semibold text-foreground">No flips match your filters</h2>
+          <div className="surface-panel rounded-[1.8rem] p-8 text-center">
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">No flips match your filters</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Adjust your filters to reveal more trading activity.
+              Adjust the filter mix to reveal more of your trading activity.
             </p>
           </div>
         ) : null}
@@ -321,7 +335,7 @@ export default function HistoryPage() {
           <section className="space-y-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
                   Your trading activity
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -333,110 +347,109 @@ export default function HistoryPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">Active flips</h3>
-                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
                   {activeFlips.length} tracking
                 </span>
               </div>
 
               {activeFlips.length === 0 ? (
-                <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                <div className="surface-panel rounded-[1.8rem] p-6 text-sm text-muted-foreground">
                   No active flips for the current filters.
                 </div>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {activeFlips.map((flip) => (
-                    (() => {
-                      const progress = getTrackedProgress(flip)
+                  {activeFlips.map((flip) => {
+                    const progress = getTrackedProgress(flip)
 
-                      return (
-                        <article
-                          key={flip.id}
-                          className="rounded-xl border border-border bg-card p-6 transition hover:scale-[1.02]"
-                        >
-                          <div className="flex h-full flex-col gap-5">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-2">
-                                <h3 className="text-xl font-semibold text-foreground">{flip.skinName}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Buy {formatCurrency(flip.buyPrice)} {"\u2192"} Expected Sell {formatCurrency(flip.sellPriceExpected)}
-                                </p>
-                              </div>
-
-                              <span
-                                className={[
-                                  "rounded-full px-3 py-1 text-xs font-medium",
-                                  progress.tone === "ready"
-                                    ? "bg-emerald-500/15 text-emerald-300"
-                                    : "bg-amber-500/10 text-amber-300",
-                                ].join(" ")}
-                              >
-                                {progress.badge}
-                              </span>
+                    return (
+                      <article
+                        key={flip.id}
+                        className="surface-panel rounded-[1.9rem] p-6 transition hover:-translate-y-1"
+                      >
+                        <div className="flex h-full flex-col gap-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-2">
+                              <h3 className="text-xl font-semibold tracking-[-0.03em] text-foreground">{flip.skinName}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Buy {formatCurrency(flip.buyPrice)} {"\u2192"} Expected sell {formatCurrency(flip.sellPriceExpected)}
+                              </p>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                                <p className="text-sm text-muted-foreground">Potential profit</p>
-                                <p className="mt-2 text-3xl font-bold text-emerald-400">
-                                  {flip.profitExpected >= 0 ? "+" : ""}
-                                  {formatCurrency(flip.profitExpected)}
-                                </p>
-                                <p className="mt-2 text-sm text-emerald-200">
-                                  Tracking potential profit
-                                </p>
-                              </div>
+                            <span
+                              className={[
+                                "rounded-full px-3 py-1 text-xs font-medium",
+                                progress.tone === "ready"
+                                  ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                                  : "border border-amber-300/20 bg-amber-300/10 text-amber-100",
+                              ].join(" ")}
+                            >
+                              {progress.badge}
+                            </span>
+                          </div>
 
-                              <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-                                <p className="text-sm text-muted-foreground">Sell journey</p>
-                                <p className="mt-2 text-2xl font-semibold text-foreground">{progress.progressLabel}</p>
-                                <p className="mt-2 text-sm text-muted-foreground">{progress.etaLabel}</p>
-                              </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-[1.5rem] border border-emerald-500/20 bg-emerald-500/5 p-4">
+                              <p className="text-sm text-muted-foreground">Potential profit</p>
+                              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-emerald-300">
+                                {flip.profitExpected >= 0 ? "+" : ""}
+                                {formatCurrency(flip.profitExpected)}
+                              </p>
+                              <p className="mt-2 text-sm text-emerald-100/80">
+                                Still waiting to be realized
+                              </p>
                             </div>
 
-                            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-                              <div className="flex items-center justify-between gap-3 text-sm">
-                                <span className="font-medium text-foreground">{progress.helper}</span>
-                                <span className="text-muted-foreground">{progress.progressPercent}%</span>
-                              </div>
-                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-border/60">
-                                <div
-                                  className="h-full rounded-full bg-emerald-400 transition-all"
-                                  style={{ width: `${progress.progressPercent}%` }}
-                                />
-                              </div>
-                              <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-                                <span>Buy on {flip.sourceBuy}</span>
-                                <span>Sell on {flip.sourceSell}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center">
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={sellValues[flip.id] ?? String(flip.sellPriceExpected)}
-                                onChange={(e) =>
-                                  setSellValues((current) => ({
-                                    ...current,
-                                    [flip.id]: e.target.value.replace(/[^0-9.]/g, ""),
-                                  }))
-                                }
-                                className="sm:max-w-[180px]"
-                                placeholder="Actual sell price"
-                              />
-                              <Button
-                                type="button"
-                                onClick={() => handleCompleteFlip(flip)}
-                                disabled={completingId === flip.id}
-                              >
-                                {completingId === flip.id ? "Saving..." : progress.tone === "ready" ? "Sell now" : "Mark as sold"}
-                              </Button>
+                            <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
+                              <p className="text-sm text-muted-foreground">Sell journey</p>
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-foreground">{progress.progressLabel}</p>
+                              <p className="mt-2 text-sm text-muted-foreground">{progress.etaLabel}</p>
                             </div>
                           </div>
-                        </article>
-                      )
-                    })()
-                  ))}
+
+                          <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
+                            <div className="flex items-center justify-between gap-3 text-sm">
+                              <span className="font-medium text-foreground">{progress.helper}</span>
+                              <span className="text-muted-foreground">{progress.progressPercent}%</span>
+                            </div>
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+                              <div
+                                className="h-full rounded-full bg-emerald-400 transition-all"
+                                style={{ width: `${progress.progressPercent}%` }}
+                              />
+                            </div>
+                            <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+                              <span>Buy on {flip.sourceBuy}</span>
+                              <span>Sell on {flip.sourceSell}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-3 border-t border-white/8 pt-4 sm:flex-row sm:items-center">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={sellValues[flip.id] ?? String(flip.sellPriceExpected)}
+                              onChange={(e) =>
+                                setSellValues((current) => ({
+                                  ...current,
+                                  [flip.id]: e.target.value.replace(/[^0-9.]/g, ""),
+                                }))
+                              }
+                              className="rounded-2xl border-white/10 bg-white/4 sm:max-w-[180px]"
+                              placeholder="Actual sell price"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => handleCompleteFlip(flip)}
+                              disabled={completingId === flip.id}
+                              className="rounded-full bg-[#dfffc0] text-black hover:bg-[#cbff9e]"
+                            >
+                              {completingId === flip.id ? "Saving..." : progress.tone === "ready" ? "Sell now" : "Mark as sold"}
+                            </Button>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -444,13 +457,13 @@ export default function HistoryPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">Completed flips</h3>
-                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-medium text-muted-foreground">
                   {completedFlips.length} completed
                 </span>
               </div>
 
               {completedFlips.length === 0 ? (
-                <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                <div className="surface-panel rounded-[1.8rem] p-6 text-sm text-muted-foreground">
                   No completed flips yet. Sell one of your tracked flips to unlock realized profit stats.
                 </div>
               ) : (
@@ -458,12 +471,12 @@ export default function HistoryPage() {
                   {completedFlips.map((flip) => (
                     <article
                       key={flip.id}
-                      className="rounded-xl border border-border bg-card p-6 transition hover:scale-[1.02]"
+                      className="surface-panel rounded-[1.9rem] p-6 transition hover:-translate-y-1"
                     >
                       <div className="flex h-full flex-col gap-5">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-2">
-                            <h3 className="text-xl font-semibold text-foreground">{flip.skinName}</h3>
+                            <h3 className="text-xl font-semibold tracking-[-0.03em] text-foreground">{flip.skinName}</h3>
                             <p className="text-sm text-muted-foreground">
                               Buy {formatCurrency(flip.buyPrice)} {"\u2192"} Sell {formatCurrency(flip.sellPriceActual ?? 0)}
                             </p>
@@ -475,7 +488,7 @@ export default function HistoryPage() {
                         <div className="flex items-end justify-between gap-4">
                           <div>
                             <p className="text-sm text-muted-foreground">Real profit</p>
-                            <p className="text-3xl font-bold text-emerald-400">
+                            <p className="text-3xl font-semibold tracking-[-0.05em] text-emerald-300">
                               {(flip.profitActual ?? 0) >= 0 ? "+" : ""}
                               {formatCurrency(flip.profitActual ?? 0)}
                             </p>
@@ -489,7 +502,7 @@ export default function HistoryPage() {
                           </div>
                         </div>
 
-                        <div className="border-t border-border pt-4 text-sm text-muted-foreground">
+                        <div className="border-t border-white/8 pt-4 text-sm text-muted-foreground">
                           <p>Buy on {flip.sourceBuy} • Sell on {flip.sourceSell}</p>
                           <p className="mt-1">Date: {formatDisplayDate(flip.completedAt ?? flip.createdAt)}</p>
                         </div>

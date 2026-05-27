@@ -4,44 +4,44 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #0b0f14;
-  --foreground: #e5e7eb;
-  --card: #111827;
-  --card-foreground: #e5e7eb;
-  --popover: #111827;
-  --popover-foreground: #e5e7eb;
-  --primary: #22c55e;
-  --primary-foreground: #e5e7eb;
-  --secondary: #111827;
-  --secondary-foreground: #e5e7eb;
-  --muted: #1f2937;
-  --muted-foreground: #9ca3af;
-  --accent: #22c55e;
-  --accent-foreground: #e5e7eb;
-  --destructive: #EF4444;
-  --destructive-foreground: #e5e7eb;
-  --border: #1f2937;
-  --input: #1f2937;
-  --ring: #22c55e;
-  --chart-1: #22c55e;
-  --chart-2: #16a34a;
-  --chart-3: #F59E0B;
-  --chart-4: #EF4444;
-  --chart-5: #8B5CF6;
-  --radius: 0.625rem;
-  --sidebar: #0f172a;
-  --sidebar-foreground: #e5e7eb;
-  --sidebar-primary: #22c55e;
-  --sidebar-primary-foreground: #e5e7eb;
-  --sidebar-accent: #1f2937;
-  --sidebar-accent-foreground: #e5e7eb;
-  --sidebar-border: #1f2937;
-  --sidebar-ring: #22c55e;
+  --background: #060809;
+  --foreground: #f3f4ef;
+  --card: #0d1112;
+  --card-foreground: #f3f4ef;
+  --popover: #0d1112;
+  --popover-foreground: #f3f4ef;
+  --primary: #7bf179;
+  --primary-foreground: #08110a;
+  --secondary: #141a1b;
+  --secondary-foreground: #f3f4ef;
+  --muted: #171d1f;
+  --muted-foreground: #9ea8a5;
+  --accent: #d2f39a;
+  --accent-foreground: #0b130d;
+  --destructive: #ef4444;
+  --destructive-foreground: #fff7f7;
+  --border: #1b2325;
+  --input: #171e20;
+  --ring: #8cf08f;
+  --chart-1: #78f17a;
+  --chart-2: #c8f08b;
+  --chart-3: #f7cd71;
+  --chart-4: #f77272;
+  --chart-5: #8dd6ff;
+  --radius: 0.9rem;
+  --sidebar: #080c0d;
+  --sidebar-foreground: #eff3ee;
+  --sidebar-primary: #7bf179;
+  --sidebar-primary-foreground: #08110a;
+  --sidebar-accent: #14191b;
+  --sidebar-accent-foreground: #eff3ee;
+  --sidebar-border: #151d1f;
+  --sidebar-ring: #8cf08f;
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: ui-rounded, "Aptos", "Aptos Display", "Segoe UI Variable Display", "Trebuchet MS", sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", "Consolas", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -84,7 +84,35 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top, rgba(128, 255, 157, 0.12), transparent 24%),
+      radial-gradient(circle at 85% 20%, rgba(255, 219, 107, 0.08), transparent 18%),
+      linear-gradient(180deg, #07090a 0%, #050607 100%);
+    font-feature-settings: "ss01" 1, "cv11" 1;
+    letter-spacing: -0.01em;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: rgba(123, 241, 121, 0.3);
+    color: #f8fff7;
+  }
+}
+
+@layer utilities {
+  .surface-panel {
+    background: linear-gradient(180deg, rgba(17, 22, 24, 0.94) 0%, rgba(10, 13, 15, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 22px 70px -38px rgba(0, 0, 0, 0.65);
   }
 }

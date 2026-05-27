@@ -30,11 +30,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-sidebar transition-all duration-300",
+        "flex h-screen flex-col border-r border-white/8 bg-[linear-gradient(180deg,rgba(6,8,9,0.98)_0%,rgba(8,11,12,0.98)_100%)] transition-all duration-300",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-border px-4">
+      <div className="flex h-16 items-center justify-between border-b border-white/8 px-4">
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center">
             <Image
@@ -64,10 +64,10 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  ? "bg-white/8 text-sidebar-primary"
+                  : "text-muted-foreground hover:bg-white/6 hover:text-sidebar-foreground"
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />

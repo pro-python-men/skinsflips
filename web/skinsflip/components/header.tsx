@@ -33,7 +33,7 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
+    <header className="flex h-16 items-center justify-between border-b border-white/8 bg-black/22 px-4 backdrop-blur-xl lg:px-6">
       <div className="flex items-center gap-4">
         {showMenuButton && (
           <Button
@@ -45,7 +45,7 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
         )}
-        <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+        <h1 className="text-xl font-semibold tracking-[-0.04em] text-foreground">{title}</h1>
       </div>
 
       {isLoading ? null : user === null ? (
@@ -53,7 +53,7 @@ export function Header({ title, onMenuClick, showMenuButton }: HeaderProps) {
           href="/api/auth/steam"
           iconSize={28}
           useButtonWrapper
-          anchorClassName="px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-sm transition"
+          anchorClassName="rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-sm transition hover:bg-white/10"
         />
       ) : (
         <DropdownMenu>

@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Gauge, Sparkles, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { formatCurrency, formatPercent } from "@/lib/format"
 import type { Flip } from "@/lib/types/flip"
 
@@ -24,6 +24,7 @@ type DealCardProps = Pick<
   | "priceLastUpdated"
   | "salesDataLastUpdated"
   | "dataStatus"
+  | "confidence"
 > & {
   sellWindow?: Flip["sellWindow"]
   salesLast7d?: Flip["salesLast7d"]
@@ -44,6 +45,102 @@ type DealCardProps = Pick<
   onCardClick?: () => void
 }
 
+type QualityTone = "good" | "medium" | "slow"
+
+function getFreshnessLabel(timestamp: number | undefined) {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return "unknown"
+
+  const ageMs = Math.max(0, Date.now() - timestamp)
+  const minutes = Math.floor(ageMs / 60_000)
+  if (minutes < 1) return "just now"
+  if (minutes < 60) return `${minutes} min ago`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hr ago`
+
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? "" : "s"} ago`
+}
+
+function getQualitySignal({
+  confidence,
+  liquidity,
+  salesLast7d,
+}: {
+  confidence?: number
+  liquidity?: Flip["liquidity"]
+  salesLast7d?: number
+}) {
+  const sales = typeof salesLast7d === "number" ? salesLast7d : 0
+  const confidenceValue = typeof confidence === "number" ? confidence : null
+
+  if (confidenceValue !== null) {
+    if (confidenceValue >= 75) {
+      return {
+        tone: "good" as QualityTone,
+        label: "Fast flip",
+        helper: "Strong confidence and likely easier exit",
+        value: confidenceValue,
+      }
+    }
+    if (confidenceValue >= 50) {
+      return {
+        tone: "medium" as QualityTone,
+        label: "Balanced flip",
+        helper: "Good spread, but worth checking demand first",
+        value: confidenceValue,
+      }
+    }
+    return {
+      tone: "slow" as QualityTone,
+      label: "Slower flip",
+      helper: "Profit exists, but demand or certainty is weaker",
+      value: confidenceValue,
+    }
+  }
+
+  if (liquidity === "high" || sales >= 14) {
+    return {
+      tone: "good" as QualityTone,
+      label: "Fast flip",
+      helper: "High liquidity suggests a quicker sale window",
+      value: 84,
+    }
+  }
+  if (liquidity === "medium" || sales >= 5) {
+    return {
+      tone: "medium" as QualityTone,
+      label: "Balanced flip",
+      helper: "Reasonable demand with moderate exit speed",
+      value: 58,
+    }
+  }
+  return {
+    tone: "slow" as QualityTone,
+    label: "Slower flip",
+    helper: "Lower liquidity means this may take longer to move",
+    value: 32,
+  }
+}
+
+const toneClassNames: Record<QualityTone, { bar: string; badge: string; glow: string }> = {
+  good: {
+    bar: "from-emerald-300 via-green-400 to-emerald-500",
+    badge: "border-emerald-400/30 bg-emerald-400/12 text-emerald-200",
+    glow: "shadow-[0_24px_70px_-42px_rgba(16,185,129,0.6)]",
+  },
+  medium: {
+    bar: "from-amber-200 via-amber-300 to-amber-500",
+    badge: "border-amber-300/30 bg-amber-300/12 text-amber-100",
+    glow: "shadow-[0_24px_70px_-42px_rgba(245,158,11,0.55)]",
+  },
+  slow: {
+    bar: "from-rose-200 via-rose-400 to-red-500",
+    badge: "border-rose-300/30 bg-rose-300/12 text-rose-100",
+    glow: "shadow-[0_24px_70px_-42px_rgba(239,68,68,0.55)]",
+  },
+}
+
 export function DealCard({
   name,
   buyPrice,
@@ -61,6 +158,7 @@ export function DealCard({
   priceLastUpdated,
   salesDataLastUpdated,
   dataStatus,
+  confidence,
   sellWindow,
   salesLast7d,
   salesLast30d,
@@ -81,71 +179,9 @@ export function DealCard({
 }: DealCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
-  const getLiquiditySimple = (): { label: string; duration?: string } => {
-    const salesCount = typeof salesLast7d === "number" ? salesLast7d : 0
-    if (salesCount >= 20) return { label: "Fast", duration: eta }
-    if (salesCount >= 10) return { label: "Medium", duration: eta }
-    if (salesCount >= 3) return { label: "Medium", duration: eta }
-    return { label: "Slow", duration: eta }
-  }
-
-  const liquiditySimple = getLiquiditySimple()
-
-  const formatEtaText = (value: string | undefined) => {
-    if (!value) return "within a few days"
-    return String(value).replace(/^~/, "about ")
-  }
-
-  const getWhyThisFlipText = () => {
-    if (signalText) return signalText
-    if (salesCount >= 10) return "High demand + recent sales"
-    if (profitPercent && profitPercent >= 10) return "Price gap between marketplaces"
-    if (stabilityPercent >= 70) return "Undervalued listing detected"
-    return "Profitable spread backed by recent sales"
-  }
-
-  const getUrgencyText = () => {
-    if (salesCount >= 20) return "🔥 Opportunity active now"
-    if (salesCount >= 10) return "Selling fast"
-    return "High demand"
-  }
-
-  const getLiquidityDecisionText = () => {
-    if (salesCount >= 20) return "Sells fast"
-    if (salesCount >= 10) return "Moves quickly"
-    if (salesCount >= 3) return `Steady demand (${formatEtaText(eta)})`
-    return `Slower sale (${formatEtaText(eta)})`
-  }
-
-  const getRealMarketText = () => {
-    if (salesCount > 0) return "Based on last 7 days sales"
-    return "Recent real sales data"
-  }
-
-  const getScarcityText = () => {
-    if (featured || isBest) return "Top opportunity right now"
-    return "Only a few deals like this available"
-  }
-
-  const formatFreshnessAge = (timestamp: number | undefined) => {
-    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return "unknown"
-
-    const ageMs = Math.max(0, Date.now() - timestamp)
-    const minutes = Math.floor(ageMs / 60_000)
-    if (minutes < 1) return "just now"
-    if (minutes < 60) return `${minutes} min ago`
-
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours} hr ago`
-
-    const days = Math.floor(hours / 24)
-    return `${days} day${days === 1 ? "" : "s"} ago`
-  }
-
-  const profitClassName = profit >= 0 ? "text-emerald-400" : "text-red-400"
+  const profitClassName = profit >= 0 ? "text-emerald-300" : "text-rose-300"
   const formattedProfit = `${profit >= 0 ? "+" : "-"}${formatCurrency(Math.abs(profit))}`
   const profitPercentValue = profitPercent ?? (buyPrice > 0 ? (profit / buyPrice) * 100 : 0)
-  const formattedProfitPercent = `${formatPercent(profitPercentValue, 0)}`
   const feeAmount =
     typeof marketplaceFee === "number" && Number.isFinite(marketplaceFee)
       ? marketplaceFee
@@ -161,65 +197,40 @@ export function DealCard({
         ? (feeAmount / sellPrice) * 100
         : 0
   const formattedFeeRate = formatPercent(feeRatePercent, feeRatePercent % 1 === 0 ? 0 : 1)
-  const salesCount = typeof salesLast7d === "number" ? salesLast7d : 0
   const stabilityValue = Number(stabilityScore ?? 0)
   const stabilityPercent =
     stabilityValue > 0 && stabilityValue <= 1 ? Math.round(stabilityValue * 100) : Math.round(stabilityValue)
-  const sellWindowText = sellWindow ? sellWindow : "n/a"
-  const liquidityText = liquidity ? liquidity : "unknown"
-  const liquidityLabel = liquidity ? liquidity[0].toUpperCase() + liquidity.slice(1) : "Unknown"
-  const salesLast7dLabel =
-    typeof salesLast7d === "number" && Number.isFinite(salesLast7d)
-      ? `${salesLast7d} sales (7d)`
-      : "No 7d sales data"
-  const salesLast30dLabel =
-    typeof salesLast30d === "number" && Number.isFinite(salesLast30d)
-      ? `${salesLast30d} sales (30d)`
-      : "No 30d sales data"
-  const priceStabilityLabel =
-    typeof stabilityScore === "number" && Number.isFinite(stabilityScore)
-      ? stabilityPercent >= 70
-        ? "High"
-        : stabilityPercent >= 40
-          ? "Medium"
-          : "Low"
-      : null
-  const etaDisplay = eta ?? "~7 days"
-  const priceFreshnessLabel = `${sourceBuy} price: ${formatFreshnessAge(priceLastUpdated)}`
-  const salesFreshnessLabel = `Sales data: ${formatFreshnessAge(salesDataLastUpdated)}`
+  const quality = getQualitySignal({ confidence, liquidity, salesLast7d })
+  const toneClasses = toneClassNames[quality.tone]
+  const routeText = `Buy on ${sourceBuy} -> Sell on ${sourceSell}`
+  const sellWindowText = sellWindow || eta || "Flexible timing"
+  const realSignalText =
+    signalText ||
+    (typeof salesLast7d === "number" && salesLast7d > 0
+      ? `${salesLast7d} recent sales backing this spread`
+      : "Spread backed by live marketplace pricing")
+  const priceFreshnessLabel = `${sourceBuy} price ${getFreshnessLabel(priceLastUpdated)}`
+  const salesFreshnessLabel = `Sales data ${getFreshnessLabel(salesDataLastUpdated)}`
   const dataStatusLabel =
     dataStatus === "last_successful_scan"
       ? "Last successful scan"
       : dataStatus === "cached"
-        ? "Cached data"
+        ? "Cached"
         : null
-  const routeText = `Buy on ${sourceBuy} -> Sell on ${sourceSell}`
-  const whyThisFlipText = getWhyThisFlipText()
-  const urgencyText = getUrgencyText()
-  const liquidityDecisionText = getLiquidityDecisionText()
-  const realMarketText = getRealMarketText()
-  const scarcityText = getScarcityText()
-  const metaText = [
-    `Rank ${rankScore ?? "-"}`,
-    `Liquidity ${liquidityText}`,
-    `Sell window ${sellWindowText}`,
-  ].join(" • ")
   const isLanding = variant === "landing"
   const isClickable = Boolean(onCardClick)
-  const containerClassName = [
-    "rounded-xl border border-border bg-zinc-950 p-6 shadow-sm transition-transform transition-colors duration-200 hover:-translate-y-1 hover:border-emerald-400/40",
-    isClickable ? "cursor-pointer" : "",
-  ].join(" ")
+  const primaryLabel = ctaLabel || "View deal"
 
   const renderPrimaryAction = () => {
-    if (buyDisabled || !buyHref) {
+    const href = ctaHref || buyHref
+    if (buyDisabled || !href) {
       return (
         <Button
           type="button"
           disabled
-          className="h-11 w-full rounded-xl bg-emerald-500 text-base font-semibold text-black opacity-45"
+          className="h-11 w-full rounded-2xl bg-white text-sm font-semibold text-black opacity-40"
         >
-          View deal
+          {primaryLabel}
         </Button>
       )
     }
@@ -227,17 +238,17 @@ export function DealCard({
     return (
       <Button
         asChild
-        className="h-11 w-full rounded-xl bg-green-500 text-base font-semibold text-black shadow-[0_16px_40px_rgba(34,197,94,0.24)] transition hover:bg-green-600"
+        className="h-11 w-full rounded-2xl bg-white text-sm font-semibold text-black transition hover:bg-emerald-200"
       >
         <a
-          href={buyHref}
+          href={href}
           target="_blank"
           rel="noreferrer"
           onClick={(event) => {
             event.stopPropagation()
           }}
         >
-          View deal
+          {primaryLabel}
         </a>
       </Button>
     )
@@ -255,157 +266,31 @@ export function DealCard({
           onTrack()
         }}
         disabled={isTracking || isTracked}
-        className="h-10 w-full rounded-xl border-border/80 bg-transparent text-sm font-medium text-foreground hover:bg-background/50"
+        className="h-11 w-full rounded-2xl border-white/12 bg-white/4 text-sm font-medium text-foreground hover:bg-white/8"
       >
-        {isTracked ? "Saved" : isTracking ? "Saving..." : "Save"}
+        {isTracked ? "Saved to tracking" : isTracking ? "Saving..." : "Save this flip"}
       </Button>
     )
   }
 
-  const renderEvidence = () => (
-    <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Evidence</p>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-lg border border-border/50 bg-background/20 px-3 py-2 text-foreground">
-          {salesLast7dLabel}
-        </div>
-        <div className="rounded-lg border border-border/50 bg-background/20 px-3 py-2 text-foreground">
-          {salesLast30dLabel}
-        </div>
-        <div className="rounded-lg border border-border/50 bg-background/20 px-3 py-2 text-muted-foreground">
-          Liquidity: <span className="font-medium text-foreground">{liquidityLabel}</span>
-        </div>
-        {priceStabilityLabel ? (
-          <div className="rounded-lg border border-border/50 bg-background/20 px-3 py-2 text-muted-foreground">
-            Price stability: <span className="font-medium text-foreground">{priceStabilityLabel}</span>
-          </div>
-        ) : null}
-      </div>
-      <div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span>{priceFreshnessLabel}</span>
-          {dataStatusLabel ? (
-            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-medium text-amber-200">
-              {dataStatusLabel}
-            </span>
-          ) : null}
-        </div>
-        <div>{salesFreshnessLabel}</div>
-      </div>
+  const renderMetric = (label: string, value: string, subtle?: string) => (
+    <div className="rounded-[22px] border border-white/8 bg-white/5 px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-white/45">{label}</p>
+      <p className="mt-2 text-base font-semibold text-white">{value}</p>
+      {subtle ? <p className="mt-1 text-xs text-white/45">{subtle}</p> : null}
     </div>
   )
 
-  const renderProfitBreakdown = (compact = false) => (
-    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">Profit breakdown</p>
-      <div className="mt-3 space-y-2 text-sm">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Buy on {sourceBuy}</span>
-          <span className="font-semibold text-foreground">{formatCurrency(buyPrice)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Sell on {sourceSell}</span>
-          <span className="font-semibold text-foreground">{formatCurrency(sellPrice)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Fee ({formattedFeeRate})</span>
-          <span className="font-semibold text-rose-300">-{formatCurrency(feeAmount)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-2">
-          <span className="text-muted-foreground">Net</span>
-          <span className="font-semibold text-foreground">{formatCurrency(netSellValue)}</span>
-        </div>
-        <div className="flex items-end justify-between gap-4 border-t border-emerald-500/20 pt-3">
-          <span className="text-muted-foreground">Profit</span>
-          <span className={`text-right font-extrabold leading-none ${profitClassName} ${compact ? "text-2xl" : "text-3xl"}`}>
-            {formattedProfit} <span className="text-lg font-bold text-emerald-300">{formattedProfitPercent}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-
-  if (isLanding) {
-    return (
-      <div
-        className={containerClassName}
-        onClick={onCardClick}
-        onKeyDown={(event) => {
-          if (!onCardClick) return
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            onCardClick()
-          }
-        }}
-        role={isClickable ? "button" : undefined}
-        tabIndex={isClickable ? 0 : undefined}
-      >
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <p className="text-lg font-semibold text-white">{name}</p>
-            <p className="text-xs font-medium text-emerald-300">{routeText}</p>
-            <p className="text-sm text-muted-foreground">
-              Buy {formatCurrency(buyPrice)} {"\u2192"} Sell {formatCurrency(sellPrice)}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {renderProfitBreakdown(true)}
-            <p className="text-sm font-medium text-emerald-200">Based on median sell price after marketplace fee.</p>
-            <p className="text-sm text-muted-foreground">{whyThisFlipText}</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
-                {urgencyText}
-              </span>
-              <span className="text-muted-foreground">{realMarketText}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{scarcityText}</p>
-          </div>
-
-          <div className="space-y-2">
-            {renderPrimaryAction()}
-            <p className="text-xs text-muted-foreground">{realMarketText}</p>
-            {renderSecondaryAction()}
-            {isTracked ? (
-              <div className="flex items-center justify-between gap-3 text-xs font-medium text-emerald-300">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  <span>Now saving potential profit</span>
-                </div>
-                <Link href={trackedHref} className="text-emerald-200 underline underline-offset-4">
-                  View tracking
-                </Link>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Buy on {sourceBuy}</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(buyPrice)}</p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sell on {sourceSell}</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(sellPrice)}</p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Liquidity</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{liquidityDecisionText}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{realMarketText}</p>
-            </div>
-            {renderEvidence()}
-          </div>
-
-          <p className="text-xs text-muted-foreground">{metaText}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Decision-first minimal view
   return (
-    <div
-      className={containerClassName}
+    <article
+      className={[
+        "group relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,20,24,0.98)_0%,rgba(10,12,15,0.98)_100%)] p-5 text-white transition duration-300",
+        "hover:-translate-y-1 hover:border-white/18",
+        toneClasses.glow,
+        featured || isBest ? "ring-1 ring-white/10" : "",
+        isLanding ? "min-h-[540px]" : "",
+        isClickable ? "cursor-pointer" : "",
+      ].join(" ")}
       onClick={onCardClick}
       onKeyDown={(event) => {
         if (!onCardClick) return
@@ -417,67 +302,131 @@ export function DealCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
     >
-      <div className="space-y-5">
-        {/* Header with name and price flow */}
-        <div className="space-y-2">
-          <p className="text-lg font-semibold text-white">{name}</p>
-          <p className="text-xs font-medium text-emerald-300">{routeText}</p>
-          <p className="text-xs text-muted-foreground">
-            Buy {formatCurrency(buyPrice)} {"\u2192"} Est. sell {formatCurrency(sellPrice)}
-          </p>
-        </div>
-
-        {/* Profit - Main focal point */}
-        <div className="space-y-1">
-          <div className={`text-4xl font-extrabold leading-tight ${profitClassName}`}>
-            {formattedProfit}
-          </div>
-          <p className="text-sm font-semibold text-emerald-300">{formattedProfitPercent}</p>
-        </div>
-
-        {/* Liquidity */}
-        <div className="flex items-center gap-2">
-          <span className="inline-block rounded-full border border-border/60 px-3 py-1 text-xs font-medium text-foreground">
-            {liquiditySimple.label}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_34%)] opacity-80" />
+      <div className="relative space-y-5">
+        <div className="flex flex-wrap items-center gap-2">
+          {(featured || isBest) && (
+            <span className="rounded-full border border-white/14 bg-white/8 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-white/78">
+              Priority pick
+            </span>
+          )}
+          <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] ${toneClasses.badge}`}>
+            {quality.label}
           </span>
-          {liquiditySimple.duration ? (
-            <span className="text-xs text-muted-foreground">{liquiditySimple.duration}</span>
+          {dataStatusLabel ? (
+            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100">
+              {dataStatusLabel}
+            </span>
           ) : null}
         </div>
 
-        {/* Tracking confirmation state */}
-        {isTracked ? (
-          <div className="flex items-center gap-2 text-xs font-medium text-emerald-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>Saved</span>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <p className="max-w-[24ch] text-[clamp(1.2rem,2vw,1.7rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
+              {name}
+            </p>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-200/80">
+              {routeText}
+            </p>
           </div>
-        ) : null}
 
-        {/* CTA Buttons */}
+          <div className="rounded-[24px] border border-white/10 bg-black/18 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-white/45">Estimated profit</p>
+                <div className={`mt-2 text-4xl font-semibold leading-none tracking-[-0.05em] ${profitClassName}`}>
+                  {formattedProfit}
+                </div>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/6 px-3 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">ROI</p>
+                <p className="mt-1 text-lg font-semibold text-white">{formatPercent(profitPercentValue, 0)}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-white/62">{realSignalText}</p>
+          </div>
+        </div>
+
+        <div className="rounded-[24px] border border-white/10 bg-white/4 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-white/70" />
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Flip signal</p>
+                <p className="text-sm font-medium text-white">{quality.helper}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Score</p>
+              <p className="text-base font-semibold text-white">{quality.value}/100</p>
+            </div>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/8">
+            <div
+              className={`h-full rounded-full bg-gradient-to-r ${toneClasses.bar}`}
+              style={{ width: `${quality.value}%` }}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/46">
+            <span>{liquidity ? `Liquidity ${liquidity}` : "Liquidity unknown"}</span>
+            <span>•</span>
+            <span>{sellWindowText}</span>
+            {typeof confidence === "number" ? (
+              <>
+                <span>•</span>
+                <span>Confidence {confidence}%</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={`grid gap-3 ${isLanding ? "sm:grid-cols-2" : "grid-cols-2"}`}>
+          {renderMetric("Buy", formatCurrency(buyPrice), sourceBuy)}
+          {renderMetric("Sell", formatCurrency(sellPrice), sourceSell)}
+          {renderMetric("Net after fees", formatCurrency(netSellValue), `Fee ${formattedFeeRate}`)}
+          {renderMetric("Exit speed", eta || "Not specified", typeof salesLast7d === "number" ? `${salesLast7d} sales / 7d` : undefined)}
+        </div>
+
         <div className="space-y-2">
           {renderPrimaryAction()}
           {renderSecondaryAction()}
+          {isTracked ? (
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/18 bg-emerald-400/8 px-4 py-3 text-xs font-medium text-emerald-100">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                <span>Saved to your tracking list</span>
+              </div>
+              <Link href={trackedHref} className="underline underline-offset-4">
+                Open tracking
+              </Link>
+            </div>
+          ) : null}
         </div>
 
-        {/* Collapsible Details Section */}
         <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-auto w-full justify-start p-0 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="h-auto w-full justify-between rounded-2xl border border-white/8 bg-white/3 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-white/64 hover:bg-white/7 hover:text-white"
             >
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Market details
+              </span>
               <ChevronDown className={`h-4 w-4 transition-transform ${isDetailsOpen ? "rotate-180" : ""}`} />
-              <span className="ml-1">Show details</span>
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-4 space-y-3 pt-3 border-t border-border/60">
-            {renderProfitBreakdown(true)}
-            {renderEvidence()}
-            <div className="text-xs text-muted-foreground pt-2">{metaText}</div>
+          <CollapsibleContent className="mt-3 space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              {renderMetric("Marketplace fee", formatCurrency(feeAmount), formattedFeeRate)}
+              {renderMetric("Rank score", rankScore != null ? String(rankScore) : "-", stabilityPercent > 0 ? `Stability ${stabilityPercent}%` : undefined)}
+              {renderMetric("Price freshness", priceFreshnessLabel)}
+              {renderMetric("Sales freshness", salesFreshnessLabel, typeof salesLast30d === "number" ? `${salesLast30d} sales / 30d` : undefined)}
+            </div>
           </CollapsibleContent>
         </Collapsible>
       </div>
-    </div>
+    </article>
   )
 }

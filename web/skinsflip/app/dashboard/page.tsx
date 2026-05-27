@@ -155,49 +155,67 @@ export default function DashboardPage() {
   return (
     <DashboardLayout title="Best opportunities right now" requireAuth>
       <div className="space-y-6">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Best opportunities right now
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Start with the highest-profit, fastest-selling flips first.
-            </p>
-            <p className="text-sm text-muted-foreground">{updatedLabel}</p>
+        <section className="surface-panel rounded-[2.1rem] p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
+                Ranked live board
+              </p>
+              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
+                Best opportunities right now
+              </h1>
+              <p className="max-w-[60ch] text-sm text-muted-foreground">
+                Start with the highest-profit, fastest-selling flips first. The board ranks spreads by profit and overall sell quality.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-sm text-muted-foreground">
+                {updatedLabel}
+              </div>
+              <Button type="button" variant="secondary" onClick={loadFlips} className="h-11 rounded-full px-5 text-sm">
+                Refresh board
+              </Button>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-            <Button type="button" variant="secondary" onClick={loadFlips} className="h-10 px-4 text-sm">
-              Refresh
-            </Button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+              Sources: {scanMeta?.enabledSources?.join(", ") || "available markets"}
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+              Candidates checked: {scanMeta?.counts?.candidateRows ?? 0}
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+              Opportunities found: {scanMeta?.counts?.opportunities ?? orderedFlips.length}
+            </div>
+            {rateLimited ? (
+              <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs text-amber-100">
+                Some marketplace data was rate limited during this scan
+              </div>
+            ) : null}
           </div>
-        </header>
+        </section>
 
         {loading ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+          <div className="surface-panel rounded-[2rem] p-8 text-sm text-muted-foreground">
             Loading opportunities...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-destructive/30 bg-card p-6 text-sm text-destructive">
+          <div className="surface-panel rounded-[2rem] border-destructive/20 p-8 text-sm text-destructive">
             {error}
           </div>
         ) : orderedFlips.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center">
+          <div className="surface-panel rounded-[2rem] p-8 text-center">
             <p className="text-lg font-semibold text-foreground">No profitable spreads found</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Scan completed across {scanMeta?.enabledSources?.join(", ") || "available sources"}.
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Checked {scanMeta?.counts?.candidateRows ?? 0} candidate items and found{" "}
-              {scanMeta?.counts?.opportunities ?? 0} positive opportunities.
+              Checked {scanMeta?.counts?.candidateRows ?? 0} candidate items and found {scanMeta?.counts?.opportunities ?? 0} positive opportunities.
             </p>
-            {rateLimited ? (
-              <p className="mt-2 text-xs text-amber-300">
-                Some marketplace data was rate limited during this scan.
-              </p>
-            ) : null}
             {scanMeta?.disabledSources?.length ? (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Skipped: {scanMeta.disabledSources.join(", ")}
               </p>
             ) : null}
@@ -206,15 +224,15 @@ export default function DashboardPage() {
           <>
             {topFlip ? (
               <section className="space-y-4">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-                    Start here
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
+                    First move
                   </div>
-                  <h2 className="text-xl font-semibold text-foreground">
+                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
                     Highest-priority flip right now
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Best mix of profit, sell speed, and confidence from the current live scan.
+                    Best current mix of profit, confidence, and sell speed from the latest scan.
                   </p>
                 </div>
 
@@ -235,12 +253,15 @@ export default function DashboardPage() {
 
             {nextFlips.length > 0 ? (
               <section className="space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold text-foreground">
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
+                    Continue down the board
+                  </div>
+                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
                     Next flips to check
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Move down this list after the top opportunity.
+                    If the top opportunity is gone, work through these next highest-ranked spreads.
                   </p>
                 </div>
 
@@ -264,7 +285,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-
     </DashboardLayout>
   )
 }
