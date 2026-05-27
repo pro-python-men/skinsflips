@@ -1,19 +1,5 @@
-import { listUsers } from "./user.service.js";
+import { ApiError } from "../../shared/errors/ApiError.js";
 
-export async function getUsers(req, res) {
-  try {
-    const users = await listUsers();
-    res.json(
-      users.map((u) => ({
-        id: u.id,
-        email: u.email,
-        createdAt: u.created_at
-      }))
-    );
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Internal server error"
-    });
-  }
+export async function getUsers(_req, _res, next) {
+  return next(ApiError.forbidden("Admin access required"));
 }

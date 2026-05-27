@@ -1,11 +1,15 @@
 import { asyncHandler } from "../../shared/middleware/asyncHandler.js";
 import { registerUser, loginUser, steamExchangeUser } from "./auth.service.js";
+import { getConfig } from "../../config/env.js";
 
 function setAuthCookie(res, token) {
+  const config = getConfig();
   res.cookie("token", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false
+    secure: config.nodeEnv === "production",
+    maxAge: config.jwt.expiresInSeconds * 1000,
+    path: "/"
   });
 }
 

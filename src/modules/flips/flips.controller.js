@@ -120,7 +120,23 @@ export const markFlipAsCompleted = asyncHandler(async (req, res) => {
 });
 
 export const getBestFlips = asyncHandler(async (req, res) => {
-  const data = await getBestFlipsReal();
+  const buySourcesRaw =
+    typeof req.query?.buySources === "string" ? req.query.buySources : "";
+  const buySources = buySourcesRaw
+    ? buySourcesRaw
+        .split(",")
+        .map((source) => source.trim())
+        .filter(Boolean)
+    : undefined;
+
+  const data = await getBestFlipsReal({
+    buySources,
+    maxBuyPrice: req.query?.maxBuyPrice,
+    minProfitUsd: req.query?.minProfitUsd,
+    minProfitPercent: req.query?.minProfitPercent,
+    includeLowLiquidity: req.query?.includeLowLiquidity,
+    mode: req.query?.mode
+  });
   res.json(data);
 });
 

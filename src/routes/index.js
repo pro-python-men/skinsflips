@@ -16,10 +16,32 @@ import {
   deleteInventory
 } from "../modules/inventory/inventory.controller.js";
 import { requireAuth } from "../shared/middleware/requireAuth.js";
+import { rateLimit } from "../shared/middleware/rateLimit.js";
 const router = Router();
 
-router.post("/auth/register", register);
-router.post("/auth/login", login);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many login attempts, please try again later",
+  keyPrefix: "auth"
+});
+
+const steamLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: "Too many Steam login attempts, please try again later",
+  keyPrefix: "steam-auth"
+});
+
+const publicBestFlipsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyPrefix: "public-best-flips"
+});
+
+router.post("/auth/register", authLimiter, register);
+router.post("/auth/login", authLimiter, login);
+router.post("/auth/steam/exchange", steamLimiter, steamExchange);
 router.get("/auth/me", requireAuth, (req, res) => {
   res.status(200).json({ user: req.user });
 });
@@ -29,7 +51,7 @@ router.get("/health", (req, res) => {
     uptime: process.uptime()
   });
 });
-router.get("/public/flips/best", getBestFlips);
+router.get("/public/flips/best", publicBestFlipsLimiter, getBestFlips);
 
 router.use(["/flips", "/stats", "/inventory", "/users"], requireAuth);
 router.get("/flips/best", getBestFlips);
@@ -38,7 +60,6 @@ router.post("/flips", createFlip);
 router.get("/flips/my", getMyTrackedFlips);
 router.post("/flips/track", createTrackedFlip);
 router.patch("/flips/:id/complete", markFlipAsCompleted);
-router.post("/auth/steam/exchange", steamExchange);
 
 router.get("/stats", getStats);
 

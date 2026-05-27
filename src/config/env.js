@@ -54,6 +54,14 @@ function number(name, fallback) {
   return value;
 }
 
+function csv(name, fallback) {
+  const raw = process.env[name] || fallback;
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 export function getConfig() {
   const nodeEnv = process.env.NODE_ENV || "development";
   const jwtSecret = process.env.JWT_SECRET || "";
@@ -65,7 +73,8 @@ export function getConfig() {
   return {
     nodeEnv,
     port: number("PORT", 4000),
-    corsOrigin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    corsOrigins: csv("CORS_ORIGIN", "http://localhost:3000"),
+    trustProxy: number("TRUST_PROXY", 0),
     jwt: {
       secret: jwtSecret || "dev-insecure-secret",
       expiresInSeconds: number("JWT_EXPIRES_IN_SECONDS", 60 * 60 * 24 * 7) // 7d

@@ -227,6 +227,11 @@ function toOptionalBool(value) {
   return null;
 }
 
+function envBool(name, fallback = true) {
+  const parsed = toOptionalBool(process.env[name]);
+  return parsed === null ? fallback : parsed;
+}
+
 function minProfitCentsFromBudget(maxBuyCents) {
   const budget = Number(maxBuyCents);
   if (!Number.isFinite(budget) || budget <= 0) return 200;
@@ -560,6 +565,7 @@ function computeProfitAfterSellFee({ buyUsd, sellUsd, sellSource }) {
 
 const bestFlipsCache = new Map();
 const CACHE_MS = 5 * 60_000;
+const EMPTY_CACHE_MS = 30_000;
 
 const csfloatResponseCache = new Map();
 const CSFLOAT_CACHE_MS = 2 * 60_000;
@@ -637,7 +643,9 @@ async function fetchCsfloatListingsCached(params, { allowStaleOn429 = true } = {
 const buffmarketResponseCache = new Map();
 const BUFFMARKET_CACHE_MS = 2 * 60_000;
 let lastBuffmarketRateLimitWarnAt = 0;
+let lastBuffmarketAuthWarnAt = 0;
 const BUFFMARKET_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
+const BUFFMARKET_AUTH_COOLDOWN_MS = 30 * 60_000;
 let buffmarketBlockedUntil = 0;
 
 function buffmarketResult(data, meta) {
@@ -690,6 +698,22 @@ async function fetchBuffmarketGoodsSearchCached(params, { allowStaleOn429 = true
       msg.includes("HTTP 429") ||
       msg.toLowerCase().includes("too many requests") ||
       msg.toLowerCase().includes("rate limit");
+    const isAuthRequired =
+      msg.toLowerCase().includes("login required") ||
+      msg.toLowerCase().includes("missing buffmarket_cookie") ||
+      msg.toLowerCase().includes("invalid buffmarket_cookie");
+
+    if (isAuthRequired) {
+      buffmarketBlockedUntil = Date.now() + BUFFMARKET_AUTH_COOLDOWN_MS;
+      if (Date.now() - lastBuffmarketAuthWarnAt > 60_000) {
+        lastBuffmarketAuthWarnAt = Date.now();
+        console.warn("[buffmarket] auth required - disabling BUFF Market scan temporarily");
+      }
+      return buffmarketResult(
+        { items: [], page_num: 1, page_size: 0, total_count: 0, total_page: 0 },
+        { isCached: false, rateLimited: false, authRequired: true, lastUpdated: null }
+      );
+    }
 
     if (allowStaleOn429 && is429 && cached && cached.data) {
       return buffmarketResult(cached.data, {
@@ -760,14 +784,17 @@ export async function getBestFlipsReal({
         : null
   });
   const cached = bestFlipsCache.get(cacheKey) || null;
-  if (cached && Array.isArray(cached.data) && cached.data.length > 0 && now - cached.at < CACHE_MS) {
-    return {
-      flips: cached.data.map((flip) => ({ ...flip, dataStatus: "cached" })),
-      isCached: true,
-      lastUpdated: cached.at,
-      rateLimited: false,
-      scanMeta: cached.scanMeta || null
-    };
+  if (cached && Array.isArray(cached.data)) {
+    const cacheMs = cached.data.length > 0 ? CACHE_MS : EMPTY_CACHE_MS;
+    if (now - cached.at < cacheMs) {
+      return {
+        flips: cached.data.map((flip) => ({ ...flip, dataStatus: "cached" })),
+        isCached: true,
+        lastUpdated: cached.at,
+        rateLimited: false,
+        scanMeta: cached.scanMeta || null
+      };
+    }
   }
 
   try {
@@ -792,6 +819,8 @@ export async function getBestFlipsReal({
       Math.max(0, Number.isFinite(perItemMaxRaw) ? Math.round(perItemMaxRaw) : 10)
     );
     const minSales7d = Number(process.env.BEST_FLIPS_MIN_SALES_7D || 0);
+    const allowSameMarketDeals =
+      String(process.env.BEST_FLIPS_ALLOW_SAME_MARKET || "").trim() === "1";
 
     const buySourcesSet =
       Array.isArray(buySources) && buySources.length > 0
@@ -808,11 +837,17 @@ export async function getBestFlipsReal({
 
     const csfloatApiKey = String(process.env.CSFLOAT_API_KEY || "").trim();
     const buffmarketCookie = String(process.env.BUFFMARKET_COOKIE || "").trim();
-    const enableSkinportBuy = !buySourcesSet || buySourcesSet.has("skinport");
+    const enableSkinportBuy =
+      envBool("BEST_FLIPS_ENABLE_SKINPORT_BUY", true) &&
+      (!buySourcesSet || buySourcesSet.has("skinport"));
     const enableCsfloatBuy =
-      Boolean(csfloatApiKey) && (!buySourcesSet || buySourcesSet.has("csfloat"));
+      envBool("BEST_FLIPS_ENABLE_CSFLOAT_BUY", true) &&
+      Boolean(csfloatApiKey) &&
+      (!buySourcesSet || buySourcesSet.has("csfloat"));
     const enableBuffmarketBuy =
-      Boolean(buffmarketCookie) && (!buySourcesSet || buySourcesSet.has("buff"));
+      envBool("BEST_FLIPS_ENABLE_BUFFMARKET_BUY", true) &&
+      Boolean(buffmarketCookie) &&
+      (!buySourcesSet || buySourcesSet.has("buff"));
     const scanMeta = {
       enabledSources: [
         enableSkinportBuy ? "Skinport" : null,
@@ -820,8 +855,17 @@ export async function getBestFlipsReal({
         enableBuffmarketBuy ? "BUFF Market" : null
       ].filter(Boolean),
       disabledSources: [
-        !enableCsfloatBuy ? "CSFloat missing API key" : null,
-        !enableBuffmarketBuy ? "BUFF Market missing cookie" : null
+        !enableSkinportBuy ? "Skinport buy disabled" : null,
+        !enableCsfloatBuy
+          ? csfloatApiKey
+            ? "CSFloat buy disabled"
+            : "CSFloat missing API key"
+          : null,
+        !enableBuffmarketBuy
+          ? buffmarketCookie
+            ? "BUFF Market buy disabled"
+            : "BUFF Market missing cookie"
+          : null
       ].filter(Boolean),
       counts: {
         skinportItems: 0,
@@ -831,6 +875,9 @@ export async function getBestFlipsReal({
         itemsWithSales: 0,
         candidateRows: 0,
         opportunities: 0
+      },
+      rules: {
+        allowSameMarketDeals
       },
       filteredReasons: []
     };
@@ -919,8 +966,12 @@ export async function getBestFlipsReal({
   const skinportMarketHashNames = skinportItems
     .map((it) => (it && typeof it === "object" ? it.market_hash_name : null))
     .filter((n) => typeof n === "string" && n.trim());
+  const buySourceMarketHashNames = [
+    ...Array.from(csfloatBestDealBuyByName.keys()),
+    ...(enableSkinportBuy ? skinportMarketHashNames : [])
+  ];
   const marketHashNames = Array.from(
-    new Set([...skinportMarketHashNames, ...Array.from(csfloatBestDealBuyByName.keys())])
+    new Set([...buySourceMarketHashNames, ...skinportMarketHashNames])
   ).slice(0, maxUnique);
   scanMeta.counts.scannedItems = marketHashNames.length;
   const skinportSalesHistory = [];
@@ -984,6 +1035,10 @@ export async function getBestFlipsReal({
     for (const buy of validBuyCandidates) {
       for (const sell of validSellCandidates) {
         if (onlySource && buy.source !== onlySource && sell.source !== onlySource) continue;
+        if (!allowSameMarketDeals && buy.source === sell.source) {
+          if (debug) debugHit(`${buy.source}->${sell.source}:same_market_pair`);
+          continue;
+        }
 
         const { feeRate } = feeConfigForSellSource(sell.source, sell.cents);
         const deal = buildOpportunity({
@@ -1164,6 +1219,12 @@ export async function getBestFlipsReal({
       });
       buffGoods = wrap?.data || null;
       buffmarketMeta = wrap?.meta || null;
+      if (buffmarketMeta?.authRequired) {
+        if (!scanMeta.disabledSources.includes("BUFF Market login required")) {
+          scanMeta.disabledSources.push("BUFF Market login required");
+        }
+        break;
+      }
     } catch (e) {
       buffGoods = null;
       buffmarketFetchErrors += 1;
@@ -1264,15 +1325,13 @@ export async function getBestFlipsReal({
       };
     }
 
-    // Don't overwrite the cache with an empty response if we're rate-limited.
     if (sliced.length === 0) {
+      bestFlipsCache.set(cacheKey, { at: now, data: sliced, scanMeta });
       return { flips: [], isCached: false, lastUpdated: null, rateLimited: true, scanMeta };
     }
   }
 
-  if (sliced.length > 0) {
-    bestFlipsCache.set(cacheKey, { at: now, data: sliced, scanMeta });
-  }
+  bestFlipsCache.set(cacheKey, { at: now, data: sliced, scanMeta });
   return { flips: sliced, isCached: false, lastUpdated: now, rateLimited: false, scanMeta };
   } catch (e) {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : "";
