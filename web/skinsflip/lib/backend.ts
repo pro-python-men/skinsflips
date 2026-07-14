@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerApiBaseUrl } from "@/lib/server-env";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+const API_BASE_URL = getServerApiBaseUrl();
 
 export async function getTokenFromCookies() {
   const store = await cookies();

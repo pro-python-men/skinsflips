@@ -10,8 +10,12 @@ Monorepo:
 
 ## Backend setup
 1. Create `./.env` (copy from `./.env.example`) and set:
-   - `JWT_SECRET`
-   - `DB_PASSWORD` (and other DB values if needed)
+   - required:
+     - `DB_PASSWORD` or `DATABASE_URL`
+   - recommended:
+     - `JWT_SECRET`
+     - `STEAM_WEB_API_KEY`
+     - `CSFLOAT_API_KEY`
    - (optional) Best flips BUFF Market:
      - `BEST_FLIPS_ENABLE_BUFFMARKET_BUY=1`
      - `BUFFMARKET_COOKIE=...`
@@ -27,7 +31,8 @@ Monorepo:
 
 ## Frontend setup
 1. Create `./web/skinsflip/.env.local` (copy from `./web/skinsflip/.env.local.example`):
-   - `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api`
+   - `API_BASE_URL=http://localhost:4000/api`
+   - `NEXT_PUBLIC_APP_ORIGIN=http://localhost:3000`
 2. Install and run:
    - `cd web/skinsflip`
    - `npm install`

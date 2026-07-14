@@ -3,15 +3,26 @@ export const revalidate = 0;
 
 import { NextResponse } from "next/server";
 import { backendFetch, unauthorized } from "@/lib/backend";
+import { getServerApiBaseUrl } from "@/lib/server-env";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+const API_BASE_URL = getServerApiBaseUrl();
 
-let lastSuccessfulPayload: {
+type BestFlipsPayload = {
   flips: any[];
   isCached: boolean;
   lastUpdated: number | null;
-} | null = null;
+  rateLimited?: boolean;
+  scanMeta?: Record<string, unknown> | null;
+};
+
+const lastSuccessfulPayloads = new Map<string, BestFlipsPayload>();
+
+function getCacheKey(url: URL) {
+  const params = new URLSearchParams(url.searchParams);
+  params.sort();
+  const qs = params.toString();
+  return qs ? `/flips/best?${qs}` : "/flips/best";
+}
 
 function normalizeLiquidity(liquidity: unknown) {
   if (liquidity === "HIGH") return "high";
@@ -83,8 +94,8 @@ async function fetchPublicBestFlips(path: string) {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const qs = url.searchParams.toString();
-  const path = qs ? `/flips/best?${qs}` : "/flips/best";
+  const path = getCacheKey(url);
+  const lastSuccessfulPayload = lastSuccessfulPayloads.get(path) ?? null;
 
   const { response, unauthorized: isUnauthorized } = await backendFetch(path);
   if (!isUnauthorized) {
@@ -92,23 +103,25 @@ export async function GET(request: Request) {
     if (response!.ok) {
       const out = normalizePayload(data);
       if (out.flips.length > 0) {
-        lastSuccessfulPayload = out;
+        lastSuccessfulPayloads.set(path, out);
       }
       return NextResponse.json(out, { status: 200 });
     }
   }
 
-  try {
-    const publicResult = await fetchPublicBestFlips(path);
-    if (publicResult.response.ok) {
-      const out = normalizePayload(publicResult.data);
-      if (out.flips.length > 0) {
-        lastSuccessfulPayload = out;
+  if (isUnauthorized) {
+    try {
+      const publicResult = await fetchPublicBestFlips(path);
+      if (publicResult.response.ok) {
+        const out = normalizePayload(publicResult.data);
+        if (out.flips.length > 0) {
+          lastSuccessfulPayloads.set(path, out);
+        }
+        return NextResponse.json(out, { status: 200 });
       }
-      return NextResponse.json(out, { status: 200 });
+    } catch {
+      // Fall back to the last successful payload below.
     }
-  } catch {
-    // Fall back to the last successful payload below.
   }
 
   if (lastSuccessfulPayload) {

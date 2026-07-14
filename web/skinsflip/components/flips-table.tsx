@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { formatCurrency, formatShortDate } from "@/lib/format"
 
 export type Flip = {
   id: string
@@ -67,20 +65,20 @@ export function FlipsTable({ flips }: Props) {
       <table className="w-full text-sm">
         <thead className="text-zinc-400">
           <tr>
-            <th className="text-left p-2">Skin</th>
-            <th className="text-left p-2">Buy</th>
-            <th className="text-left p-2">Sell</th>
-            <th className="text-left p-2">
+            <th className="p-2 text-left">Skin</th>
+            <th className="p-2 text-left">Buy</th>
+            <th className="p-2 text-left">Sell</th>
+            <th className="p-2 text-left">
               <button className="hover:underline" onClick={() => toggleSort("profit")}>
                 Profit{sort.key === "profit" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
               </button>
             </th>
-            <th className="text-left p-2">
+            <th className="p-2 text-left">
               <button className="hover:underline" onClick={() => toggleSort("roi")}>
                 ROI{sort.key === "roi" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
               </button>
             </th>
-            <th className="text-left p-2">
+            <th className="p-2 text-left">
               <button className="hover:underline" onClick={() => toggleSort("date")}>
                 Date{sort.key === "date" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
               </button>
@@ -89,28 +87,25 @@ export function FlipsTable({ flips }: Props) {
         </thead>
 
         <tbody>
-  {flips.length === 0 ? (
-    <tr>
-      <td
-        colSpan={6}
-        className="text-center text-muted-foreground py-8"
-      >
-        You haven't added any flips yet.
-      </td>
-    </tr>
-  ) : (
-    flips.map((flip) => (
-      <tr key={flip.id} className="border-t border-zinc-800">
-        <td className="p-2">{flip.skin}</td>
-        <td className="p-2">${flip.buyPrice}</td>
-        <td className="p-2">${flip.sellPrice}</td>
-        <td className="p-2 text-green-400">${flip.profit}</td>
-        <td className="p-2">{flip.roi}%</td>
-        <td className="p-2">{new Date(flip.date).toLocaleDateString()}</td>
-      </tr>
-    ))
-  )}
-</tbody>
+          {sorted.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                You haven't added any flips yet.
+              </td>
+            </tr>
+          ) : (
+            pageItems.map((flip) => (
+              <tr key={flip.id} className="border-t border-zinc-800">
+                <td className="p-2">{flip.skin}</td>
+                <td className="p-2">${flip.buyPrice}</td>
+                <td className="p-2">${flip.sellPrice}</td>
+                <td className="p-2 text-green-400">${flip.profit}</td>
+                <td className="p-2">{flip.roi}%</td>
+                <td className="p-2">{new Date(flip.date).toLocaleDateString()}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
       </table>
 
       <div className="mt-4 flex items-center justify-end gap-2">

@@ -503,7 +503,7 @@ export default function HistoryPage() {
                         </div>
 
                         <div className="border-t border-white/8 pt-4 text-sm text-muted-foreground">
-                          <p>Buy on {flip.sourceBuy} • Sell on {flip.sourceSell}</p>
+                          <p>Buy on {flip.sourceBuy} | Sell on {flip.sourceSell}</p>
                           <p className="mt-1">Date: {formatDisplayDate(flip.completedAt ?? flip.createdAt)}</p>
                         </div>
                       </div>

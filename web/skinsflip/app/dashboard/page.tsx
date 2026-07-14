@@ -5,6 +5,7 @@ import { useAuth } from "@/components/auth-context"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { DealCard } from "@/components/deal-card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import type { BestFlipsResponse, Flip } from "@/lib/types/flip"
@@ -31,6 +32,10 @@ export default function DashboardPage() {
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now")
   const [scanMeta, setScanMeta] = useState<BestFlipsResponse["scanMeta"]>(null)
   const [rateLimited, setRateLimited] = useState(false)
+  const [budget, setBudget] = useState(() => {
+    if (typeof window === "undefined") return ""
+    return window.localStorage.getItem("bestFlipsBudget") || ""
+  })
 
   const orderedFlips = useMemo(() => {
     return [...flips].sort((a, b) => {
@@ -106,7 +111,13 @@ export default function DashboardPage() {
     setError("")
 
     try {
-      const flipsData = await apiFetch("/api/flips/best")
+      const params = new URLSearchParams()
+      const numericBudget = Number(budget)
+      if (budget.trim() && Number.isFinite(numericBudget) && numericBudget > 0) {
+        params.set("maxBuyPrice", String(numericBudget))
+      }
+      const query = params.toString()
+      const flipsData = await apiFetch(`/api/flips/best${query ? `?${query}` : ""}`)
       const payload = flipsData as BestFlipsResponse | Flip[] | null
       const safeFlips = Array.isArray(payload)
         ? (payload as Flip[])
@@ -139,6 +150,14 @@ export default function DashboardPage() {
   }, [isAuthenticated, isLoadingAuth])
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem("bestFlipsBudget", budget)
+    } catch {
+      // ignore
+    }
+  }, [budget])
+
+  useEffect(() => {
     setUpdatedLabel(formatUpdatedSeconds(lastUpdatedAt))
 
     if (lastUpdatedAt === null) {
@@ -156,7 +175,7 @@ export default function DashboardPage() {
     <DashboardLayout title="Best opportunities right now" requireAuth>
       <div className="space-y-6">
         <section className="surface-panel rounded-[2.1rem] p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-5">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
                 Ranked live board
@@ -169,31 +188,53 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-sm text-muted-foreground">
                 {updatedLabel}
               </div>
-              <Button type="button" variant="secondary" onClick={loadFlips} className="h-11 rounded-full px-5 text-sm">
-                Refresh board
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
-              Sources: {scanMeta?.enabledSources?.join(", ") || "available markets"}
-            </div>
-            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
-              Candidates checked: {scanMeta?.counts?.candidateRows ?? 0}
-            </div>
-            <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
-              Opportunities found: {scanMeta?.counts?.opportunities ?? orderedFlips.length}
-            </div>
-            {rateLimited ? (
-              <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs text-amber-100">
-                Some marketplace data was rate limited during this scan
+              <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+                Sources: {scanMeta?.enabledSources?.join(", ") || "available markets"}
               </div>
-            ) : null}
+              <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+                Candidates checked: {scanMeta?.counts?.candidateRows ?? 0}
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/4 px-4 py-2 text-xs text-muted-foreground">
+                Opportunities found: {scanMeta?.counts?.opportunities ?? orderedFlips.length}
+              </div>
+              {rateLimited ? (
+                <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs text-amber-100">
+                  Some marketplace data was rate limited during this scan
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-[1.7rem] border border-white/8 bg-white/4 p-4 lg:flex-row lg:items-end">
+              <div className="min-w-0 flex-1">
+                <label className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Budget filter
+                </label>
+                <Input
+                  value={budget}
+                  onChange={(event) => setBudget(event.target.value.replace(/[^0-9.]/g, ""))}
+                  inputMode="decimal"
+                  placeholder="Max buy price, e.g. 50"
+                  className="rounded-2xl border-white/10 bg-white/4"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={loadFlips} className="h-11 rounded-full px-5 text-sm">
+                  Refresh board
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setBudget("")}
+                  className="h-11 rounded-full border border-white/10 bg-white/4 px-5 text-sm text-white hover:bg-white/8"
+                >
+                  Clear budget
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
 
