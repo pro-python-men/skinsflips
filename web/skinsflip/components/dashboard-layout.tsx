@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-context"
-import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { LegalFooter } from "@/components/legal-footer"
-import { cn } from "@/lib/utils"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -15,7 +13,6 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title, requireAuth }: DashboardLayoutProps) {
   const { user, isAuthenticated, isLoading: isLoadingAuth } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   useEffect(() => {
@@ -27,53 +24,31 @@ export function DashboardLayout({ children, title, requireAuth }: DashboardLayou
 
   if (requireAuth && (isLoadingAuth || !isAuthenticated)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground">Checking auth...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="surface-panel w-full max-w-md rounded-[1.8rem] p-8 text-center">
+          <p className="section-heading">Secure access</p>
+          <div className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">Checking authentication</div>
+          <p className="mt-2 text-sm text-muted-foreground">Preparing your trading workspace.</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-transparent">
-      {/* Mobile overlay */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
+    <div className="app-shell min-h-screen bg-transparent">
+      <Header
+        title={title}
+        onMenuClick={() => setIsMobileOpen((current) => !current)}
+        onMobileClose={() => setIsMobileOpen(false)}
+        showMenuButton
+        isMobileMenuOpen={isMobileOpen}
+      />
 
-      {/* Sidebar - Desktop */}
-      <div className="hidden lg:block">
-        <Sidebar
-          isCollapsed={isCollapsed}
-          onToggle={() => setIsCollapsed(!isCollapsed)}
-        />
-      </div>
+      <main className="content-frame py-6 lg:py-8">
+        {children}
+      </main>
 
-      {/* Sidebar - Mobile */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 lg:hidden",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full",
-          "transition-transform duration-300"
-        )}
-      >
-        <Sidebar isCollapsed={false} onToggle={() => setIsMobileOpen(false)} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          title={title}
-          onMenuClick={() => setIsMobileOpen(true)}
-          showMenuButton
-        />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 lg:p-6">{children}</div>
-          <LegalFooter />
-        </main>
-      </div>
+      <LegalFooter />
     </div>
   )
 }

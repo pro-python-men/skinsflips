@@ -44,21 +44,21 @@ function HistorySummaryCard({
 }) {
   return (
     <div
-      className={[
-        "surface-panel rounded-[1.8rem] p-6",
-        tone === "profit" ? "shadow-[0_20px_60px_-35px_rgba(52,211,153,0.45)]" : "",
-      ].join(" ")}
+        className={[
+          "surface-panel rounded-[1.8rem] p-6",
+          tone === "profit" ? "shadow-[0_20px_60px_-35px_rgba(213,166,90,0.28)]" : "",
+        ].join(" ")}
     >
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
       <p
         className={[
           "mt-3 font-semibold tracking-[-0.05em]",
-          tone === "profit" ? "text-4xl text-emerald-300" : "text-3xl text-foreground",
+          tone === "profit" ? "text-4xl text-[#f1c87a]" : "text-3xl text-foreground",
         ].join(" ")}
       >
         {value}
       </p>
-      {helper ? <p className="mt-2 text-sm text-emerald-300">{helper}</p> : null}
+      {helper ? <p className="mt-2 text-sm text-[#e3c58f]">{helper}</p> : null}
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </div>
   )
@@ -248,7 +248,7 @@ export default function HistoryPage() {
       </div>
       <h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-foreground">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-      <Button asChild className="mt-6 rounded-full bg-[#dfffc0] px-5 text-black hover:bg-[#cbff9e]">
+      <Button asChild className="mt-6 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90">
         <Link href="/best-flips">Go to Best Flips</Link>
       </Button>
     </div>
@@ -262,9 +262,7 @@ export default function HistoryPage() {
       <div className="space-y-6">
         <section className="surface-panel rounded-[2.1rem] p-6">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
-              Trading journal
-            </p>
+            <p className="section-heading">Trading journal</p>
             <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
               Track active flips and realized exits
             </h1>
@@ -347,7 +345,7 @@ export default function HistoryPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">Active flips</h3>
-                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                <span className="rounded-full border border-[#d5a65a]/25 bg-[#d5a65a]/10 px-3 py-1 text-xs font-medium text-[#f1c87a]">
                   {activeFlips.length} tracking
                 </span>
               </div>
@@ -379,7 +377,7 @@ export default function HistoryPage() {
                               className={[
                                 "rounded-full px-3 py-1 text-xs font-medium",
                                 progress.tone === "ready"
-                                  ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                                  ? "border border-[#d5a65a]/25 bg-[#d5a65a]/10 text-[#f8e7bf]"
                                   : "border border-amber-300/20 bg-amber-300/10 text-amber-100",
                               ].join(" ")}
                             >
@@ -388,13 +386,13 @@ export default function HistoryPage() {
                           </div>
 
                           <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-[1.5rem] border border-emerald-500/20 bg-emerald-500/5 p-4">
+                            <div className="rounded-[1.5rem] border border-[#d5a65a]/20 bg-[#d5a65a]/6 p-4">
                               <p className="text-sm text-muted-foreground">Potential profit</p>
-                              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-emerald-300">
+                              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#f1c87a]">
                                 {flip.profitExpected >= 0 ? "+" : ""}
                                 {formatCurrency(flip.profitExpected)}
                               </p>
-                              <p className="mt-2 text-sm text-emerald-100/80">
+                              <p className="mt-2 text-sm text-[#e7d9b8]/80">
                                 Still waiting to be realized
                               </p>
                             </div>
@@ -413,7 +411,7 @@ export default function HistoryPage() {
                             </div>
                             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
                               <div
-                                className="h-full rounded-full bg-emerald-400 transition-all"
+                                className="h-full rounded-full bg-primary transition-all"
                                 style={{ width: `${progress.progressPercent}%` }}
                               />
                             </div>
@@ -441,7 +439,7 @@ export default function HistoryPage() {
                               type="button"
                               onClick={() => handleCompleteFlip(flip)}
                               disabled={completingId === flip.id}
-                              className="rounded-full bg-[#dfffc0] text-black hover:bg-[#cbff9e]"
+                              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                             >
                               {completingId === flip.id ? "Saving..." : progress.tone === "ready" ? "Sell now" : "Mark as sold"}
                             </Button>
@@ -482,13 +480,13 @@ export default function HistoryPage() {
                             </p>
                           </div>
 
-                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                          <CheckCircle2 className="h-5 w-5 text-[#d5a65a]" />
                         </div>
 
                         <div className="flex items-end justify-between gap-4">
                           <div>
                             <p className="text-sm text-muted-foreground">Real profit</p>
-                            <p className="text-3xl font-semibold tracking-[-0.05em] text-emerald-300">
+                            <p className="text-3xl font-semibold tracking-[-0.05em] text-[#f1c87a]">
                               {(flip.profitActual ?? 0) >= 0 ? "+" : ""}
                               {formatCurrency(flip.profitActual ?? 0)}
                             </p>

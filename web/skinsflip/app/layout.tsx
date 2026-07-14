@@ -1,8 +1,15 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { Manrope } from 'next/font/google'
 import './globals.css'
 import { Toaster } from "@/components/ui/toaster"
 import { AuthStateProvider } from "@/components/auth-context"
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-manrope',
+})
 
 export const metadata: Metadata = {
   title: 'CS2 Skin Flipper - Track Your Trades',
@@ -37,7 +44,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
+      <body className={`${manrope.variable} font-sans antialiased`}>
         <AuthStateProvider>{children}</AuthStateProvider>
         <Toaster />
         <Analytics />

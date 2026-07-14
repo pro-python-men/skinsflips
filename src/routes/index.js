@@ -13,7 +13,9 @@ import { getStats } from "../modules/stats/stats.controller.js";
 import {
   getInventory,
   addInventory,
-  deleteInventory
+  deleteInventory,
+  getInventorySource,
+  syncInventoryFromSteam
 } from "../modules/inventory/inventory.controller.js";
 import { requireAuth } from "../shared/middleware/requireAuth.js";
 import { rateLimit } from "../shared/middleware/rateLimit.js";
@@ -64,6 +66,8 @@ router.patch("/flips/:id/complete", markFlipAsCompleted);
 router.get("/stats", getStats);
 
 router.get("/inventory", getInventory);
+router.get("/inventory/source", getInventorySource);
+router.post("/inventory/sync", syncInventoryFromSteam);
 router.post("/inventory", addInventory);
 router.delete("/inventory/:id", deleteInventory);
 

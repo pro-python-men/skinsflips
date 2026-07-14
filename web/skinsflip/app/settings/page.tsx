@@ -13,61 +13,86 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { User, Bell, DollarSign, Shield } from "lucide-react"
 
+function SettingsSection({
+  icon: Icon,
+  title,
+  description,
+  iconTone,
+  children,
+}: {
+  icon: typeof User
+  title: string
+  description: string
+  iconTone: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="surface-panel rounded-[1.8rem] p-6">
+      <div className="mb-6 flex items-center gap-4">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/8 ${iconTone}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export default function SettingsPage() {
   return (
     <DashboardLayout title="Settings" requireAuth>
-      <div className="max-w-2xl space-y-6">
-        {/* Profile Settings */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <User className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Profile</h3>
-              <p className="text-sm text-muted-foreground">
-                Manage your account settings
-              </p>
-            </div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <section className="surface-panel rounded-[2rem] p-6">
+          <div className="space-y-2">
+            <p className="section-heading">Preferences</p>
+            <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
+              Configure your workspace
+            </h1>
+            <p className="max-w-[62ch] text-sm text-muted-foreground">
+              Manage account defaults, trading preferences, and notifications from one consistent settings view.
+            </p>
           </div>
+        </section>
+
+        <SettingsSection
+          icon={User}
+          title="Profile"
+          description="Identity and connected account details"
+          iconTone="bg-white/4 text-foreground"
+        >
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Display Name
               </label>
-              <Input defaultValue="SteamUser" />
+              <Input defaultValue="SteamUser" className="h-12 rounded-2xl border-white/10 bg-white/4" />
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Steam ID
               </label>
-              <Input defaultValue="76561198012345678" disabled />
+              <Input defaultValue="76561198012345678" disabled className="h-12 rounded-2xl border-white/10 bg-white/4" />
             </div>
           </div>
-        </div>
+        </SettingsSection>
 
-        {/* Trading Preferences */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-              <DollarSign className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">
-                Trading Preferences
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Configure your default trading settings
-              </p>
-            </div>
-          </div>
+        <SettingsSection
+          icon={DollarSign}
+          title="Trading Preferences"
+          description="Default assumptions used in your trading workspace"
+          iconTone="bg-primary/10 text-primary"
+        >
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Default Currency
               </label>
               <Select defaultValue="usd">
-                <SelectTrigger>
+                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -82,58 +107,45 @@ export default function SettingsPage() {
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Default Marketplace Fee (%)
               </label>
-              <Input type="number" defaultValue="13" />
+              <Input type="number" defaultValue="13" className="h-12 rounded-2xl border-white/10 bg-white/4" />
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-muted-foreground">
                 Default Trade Hold (days)
               </label>
-              <Input type="number" defaultValue="7" />
+              <Input type="number" defaultValue="7" className="h-12 rounded-2xl border-white/10 bg-white/4" />
             </div>
           </div>
-        </div>
+        </SettingsSection>
 
-        {/* Notifications */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-chart-3/10">
-              <Bell className="h-5 w-5 text-chart-3" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Notifications</h3>
-              <p className="text-sm text-muted-foreground">
-                Manage your notification preferences
-              </p>
-            </div>
-          </div>
+        <SettingsSection
+          icon={Bell}
+          title="Notifications"
+          description="Control reminders and activity summaries"
+          iconTone="bg-white/4 text-chart-3"
+        >
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Price Alerts
-                </p>
+                <p className="text-sm font-medium text-foreground">Price Alerts</p>
                 <p className="text-xs text-muted-foreground">
                   Get notified when skin prices change
                 </p>
               </div>
               <Switch defaultChecked />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Trade Hold Reminders
-                </p>
+                <p className="text-sm font-medium text-foreground">Trade Hold Reminders</p>
                 <p className="text-xs text-muted-foreground">
                   Reminder when trade hold ends
                 </p>
               </div>
               <Switch defaultChecked />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Weekly Summary
-                </p>
+                <p className="text-sm font-medium text-foreground">Weekly Summary</p>
                 <p className="text-xs text-muted-foreground">
                   Weekly report of your trading performance
                 </p>
@@ -141,52 +153,53 @@ export default function SettingsPage() {
               <Switch />
             </div>
           </div>
-        </div>
+        </SettingsSection>
 
-        {/* Danger Zone */}
-        <div className="rounded-xl border border-destructive/50 bg-card p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-              <Shield className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Danger Zone</h3>
-              <p className="text-sm text-muted-foreground">
-                Irreversible actions
-              </p>
-            </div>
-          </div>
+        <SettingsSection
+          icon={Shield}
+          title="Danger Zone"
+          description="Irreversible actions"
+          iconTone="bg-destructive/10 text-destructive"
+        >
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-destructive/30 bg-destructive/5 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Delete All Flip History
-                </p>
+                <p className="text-sm font-medium text-foreground">Delete All Flip History</p>
                 <p className="text-xs text-muted-foreground">
                   Permanently delete all your recorded flips
                 </p>
               </div>
-              <Button variant="destructive" size="sm">
+              <Button variant="destructive" size="sm" className="rounded-full">
                 Delete
               </Button>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-destructive/30 bg-destructive/5 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Delete Account
-                </p>
+                <p className="text-sm font-medium text-foreground">Delete Account</p>
                 <p className="text-xs text-muted-foreground">
                   Permanently delete your account and all data
                 </p>
               </div>
-              <Button variant="destructive" size="sm">
+              <Button variant="destructive" size="sm" className="rounded-full">
                 Delete
               </Button>
             </div>
           </div>
-        </div>
+        </SettingsSection>
 
-        <Button className="w-full">Save Changes</Button>
+        <section className="surface-panel rounded-[1.8rem] p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Review and save your defaults</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Preference changes only affect how the workspace presents and defaults data.
+              </p>
+            </div>
+            <Button className="h-12 rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground hover:bg-primary/90">
+              Save Changes
+            </Button>
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   )

@@ -1,10 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, DollarSign, Search, TrendingUp } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
 import { LegalFooter } from "@/components/legal-footer"
+import { SteamLoginButton } from "@/components/steam-login-button"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -32,13 +34,19 @@ const steps = [
     icon: Search,
   },
   {
-    title: "Buy from cheaper marketplace",
+    title: "Buy from the cheaper marketplace",
     icon: DollarSign,
   },
   {
-    title: "Sell for profit",
+    title: "Track the exit and sell for profit",
     icon: TrendingUp,
   },
+]
+
+const primaryNav = [
+  { href: "#live-board", label: "Live board" },
+  { href: "#how-it-works", label: "How it works" },
+  { href: "/dashboard", label: "Dashboard" },
 ]
 
 export default function HomePage() {
@@ -206,52 +214,68 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-transparent text-foreground">
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-black/35 backdrop-blur-xl">
-        <div className="mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between px-6 lg:px-10">
-          <a href="/" className="flex items-center">
-            <img
-              src="/stronka.png"
-              alt="SkinFlip logo"
-              className="h-9 w-auto object-contain lg:h-10"
-            />
-          </a>
-
-          <div className="flex items-center">
-            <a
-              href="/login"
-              className="flex items-center gap-4 rounded-full border border-white/10 bg-white/6 px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:scale-[1.02] hover:bg-white/10"
-            >
+      <header className="sticky top-0 z-50 border-b border-white/8 topbar-blur">
+        <div className="content-frame">
+          <div className="flex min-h-[74px] items-center justify-between gap-4">
+            <Link href="/" className="flex items-center">
               <img
-                src="/steam.png"
-                alt=""
-                className="h-7 w-7 object-contain lg:h-8 lg:w-8"
+                src="/stronka.png"
+                alt="SkinFlip logo"
+                className="h-8 w-auto object-contain"
               />
-              Login with Steam
-            </a>
+            </Link>
+
+            <nav className="hidden items-center gap-1 lg:flex">
+              {primaryNav.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <SteamLoginButton
+                href="/api/auth/steam"
+                iconSize={22}
+                useButtonWrapper
+                buttonClassName="rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                anchorClassName="px-0 py-0"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-4 lg:hidden">
+            {primaryNav.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="shrink-0 rounded-full border border-white/8 bg-white/4 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </a>
+            ))}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="relative overflow-hidden rounded-[2.4rem] border border-white/8 bg-[url('/awp-hero.png')] bg-cover bg-[72%_center] bg-no-repeat py-16 sm:py-18 lg:min-h-[72vh] lg:py-20">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,4,0.92)_0%,rgba(6,10,9,0.86)_30%,rgba(6,10,9,0.52)_58%,rgba(6,10,9,0.14)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(123,241,121,0.18),transparent_28%)]" />
-
-          <div className="relative mx-auto flex min-h-[440px] max-w-[1240px] items-center px-6 sm:px-8 lg:min-h-[64vh] lg:px-10">
-            <div className="flex max-w-[560px] flex-col gap-6 lg:max-w-[600px]">
-              <div className="inline-flex w-fit items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">
-                Based on real sales data
+      <div className="content-frame py-8 lg:py-10">
+        <section className="surface-panel overflow-hidden rounded-[2rem] p-6 sm:p-8 lg:p-10">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center">
+            <div className="space-y-7">
+              <div className="inline-flex w-fit items-center rounded-full border border-white/8 bg-white/4 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                Professional CS2 trading workflow
               </div>
 
-              <div className="flex flex-col gap-4">
-                <h1 className="text-4xl font-semibold leading-[0.94] tracking-[-0.06em] text-white sm:text-5xl lg:text-[4.35rem]">
-                  Find profitable CS2 skin flips in seconds
+              <div className="space-y-4">
+                <h1 className="max-w-[12ch] text-4xl font-semibold leading-[0.92] tracking-[-0.06em] text-white sm:text-5xl lg:text-[4.4rem]">
+                  Find better CS2 flips with less noise
                 </h1>
-                <p className="text-sm font-medium uppercase tracking-[0.22em] text-lime-200/90 sm:text-base">
-                  Average flips: $5-$25 per trade
-                </p>
-                <p className="max-w-[52ch] text-base leading-7 text-white/72 sm:text-lg">
-                  See what to buy, where to buy it, and how much profit the spread leaves after fees, ranked by sellability.
+                <p className="max-w-[56ch] text-base leading-7 text-white/68 sm:text-lg">
+                  Track live marketplace spreads, compare buy sources, and move from discovery to tracked execution inside one clean trading workspace.
                 </p>
               </div>
 
@@ -259,37 +283,92 @@ export default function HomePage() {
                 <Button
                   type="button"
                   onClick={goToDeals}
-                  className="h-14 rounded-full bg-[#dfffc0] px-8 text-base font-semibold text-black shadow-[0_18px_50px_rgba(191,255,146,0.24)] transition hover:bg-[#cbff9e]"
+                  className="h-12 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 >
-                  Find profitable flips
+                  Open live board
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
 
-                <p className="text-sm text-white/60">
-                  Powered by real marketplace data
+                <p className="text-sm text-muted-foreground">
+                  Built around live profitability, liquidity, and sell timing.
                 </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Workflow
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">Scan to track</p>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Sources
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">CSFloat, Skinport, BUFF</p>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Typical profit
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">$5 to $25+</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.8rem] border border-white/8 bg-white/4 p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="section-heading">Market snapshot</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">
+                    Live opportunities
+                  </h2>
+                </div>
+                <div className="status-pill bg-background/70 px-3 py-1.5">
+                  {updatedLabel}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                {steps.map((step, index) => (
+                  <div key={step.title} className="rounded-[1.4rem] border border-white/8 bg-background/60 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/8 bg-white/5 text-primary">
+                        <step.icon className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        Step {index + 1}
+                      </span>
+                    </div>
+                    <p className="mt-4 text-sm font-medium text-foreground">{step.title}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="py-8 lg:py-10">
-          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
+        <section id="live-board" className="py-8 lg:py-10">
+          <div className="surface-panel rounded-[2rem] p-6 sm:p-8">
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
-                  Live board
+                <p className="section-heading">Live board</p>
+                <h2 className="text-3xl font-semibold tracking-[-0.05em] text-white">
+                  Current best flips
+                </h2>
+                <p className="max-w-[62ch] text-sm text-muted-foreground">
+                  Review the same ranked board used in the app and choose which buy sources to include in the scan.
                 </p>
-                <h2 className="text-3xl font-semibold tracking-[-0.05em] text-white">Current best flips</h2>
-                <p className="text-sm text-muted-foreground">
-                  Same board, same ranking logic as your main best-flips view.
-                </p>
-                <p className="text-sm text-muted-foreground">{updatedLabel}</p>
+              </div>
+              <div className="status-pill text-sm">
+                {updatedLabel}
               </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Buy from</span>
+            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Buy from
+              </span>
               <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox
                   checked={buySources.csfloat}
@@ -319,11 +398,29 @@ export default function HomePage() {
               </Label>
             </div>
 
-            {loading || error || liveFlips.length === 0 ? (
-              <div className="rounded-[2rem] border border-white/8 bg-white/4 p-8">
-                <p className="text-lg font-semibold text-foreground">Scanning market for new opportunities...</p>
+            {loading ? (
+              <div className="rounded-[1.6rem] border border-white/8 bg-white/4 p-8">
+                <p className="text-lg font-semibold text-foreground">
+                  Scanning market for new opportunities...
+                </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Live flips refresh continuously as new profitable gaps are detected.
+                  The live board refreshes as profitable spreads are found across supported markets.
+                </p>
+              </div>
+            ) : error ? (
+              <div className="rounded-[1.6rem] border border-destructive/20 bg-destructive/6 p-8">
+                <p className="text-lg font-semibold text-foreground">
+                  Live board is temporarily unavailable
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+              </div>
+            ) : liveFlips.length === 0 ? (
+              <div className="rounded-[1.6rem] border border-white/8 bg-white/4 p-8">
+                <p className="text-lg font-semibold text-foreground">
+                  No live opportunities found right now
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Adjust the selected buy sources or check again after the next scan.
                 </p>
               </div>
             ) : (
@@ -366,17 +463,15 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-8 lg:py-10">
-          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
-              How it works
-            </p>
+        <section id="how-it-works" className="py-2 lg:py-4">
+          <div className="surface-panel rounded-[2rem] p-6 sm:p-8">
+            <p className="section-heading">How it works</p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {steps.map((step, index) => (
-                <div key={step.title} className="rounded-[1.7rem] border border-white/8 bg-white/4 p-5">
+                <div key={step.title} className="rounded-[1.5rem] border border-white/8 bg-white/4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-200">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-background/80 text-primary">
                       <step.icon className="h-4 w-4" />
                     </div>
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -391,17 +486,22 @@ export default function HomePage() {
         </section>
 
         <section className="py-8 lg:py-10">
-          <div className="surface-panel rounded-[2.2rem] p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
-              Start finding profitable skins
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">Based on real sales data</p>
+          <div className="surface-panel rounded-[2rem] p-6 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="section-heading">Next step</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
+                  Start working from live market data
+                </h2>
+                <p className="mt-2 max-w-[56ch] text-sm text-muted-foreground">
+                  Open the board, review the top-ranked opportunities, and move only the flips worth tracking.
+                </p>
+              </div>
 
-            <div className="mt-6">
               <Button
                 type="button"
                 onClick={goToDeals}
-                className="rounded-full bg-[#dfffc0] px-6 py-6 text-base font-semibold text-black transition hover:bg-[#cbff9e]"
+                className="rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 See live deals
               </Button>
@@ -409,6 +509,7 @@ export default function HomePage() {
           </div>
         </section>
       </div>
+
       <LegalFooter />
     </main>
   )

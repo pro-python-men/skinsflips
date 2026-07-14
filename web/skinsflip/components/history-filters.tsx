@@ -56,9 +56,7 @@ export function HistoryFilters({
     <div className="surface-panel rounded-[1.9rem] p-5">
       <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-emerald-200/75">
-            Refine activity
-          </p>
+          <p className="section-heading">Refine activity</p>
           <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white">
             Filter your trading history
           </h3>
@@ -74,7 +72,7 @@ export function HistoryFilters({
             Date Range
           </label>
           <Select value={dateRange} onValueChange={onDateRangeChange}>
-            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-emerald-500/40">
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-primary/40">
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
@@ -92,7 +90,7 @@ export function HistoryFilters({
             Weapon
           </label>
           <Select value={weapon} onValueChange={onWeaponChange}>
-            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-emerald-500/40">
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-primary/40">
               <SelectValue placeholder="Select weapon" />
             </SelectTrigger>
             <SelectContent>
@@ -110,7 +108,7 @@ export function HistoryFilters({
             Profit
           </label>
           <Select value={profitFilter} onValueChange={onProfitFilterChange}>
-            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-emerald-500/40">
+            <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/4 px-4 transition-colors hover:border-primary/40">
               <SelectValue placeholder="Filter by profit" />
             </SelectTrigger>
             <SelectContent>

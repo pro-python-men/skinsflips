@@ -138,8 +138,8 @@ export async function LegalPage({ title, description, fileName }: LegalPageProps
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/80 bg-card/70 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="border-b border-white/8 topbar-blur">
+        <div className="content-frame flex min-h-[74px] items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image
               src="/stronka.png"
@@ -152,27 +152,29 @@ export async function LegalPage({ title, description, fileName }: LegalPageProps
           </Link>
           <Link
             href="/"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Back to app
           </Link>
         </div>
       </header>
 
-      <article className="mx-auto w-full max-w-3xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mb-10 border-b border-border pb-8">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
-            Legal
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            {title}
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
-            {description}
-          </p>
-        </div>
+      <article className="content-frame py-14 sm:py-20">
+        <div className="mx-auto max-w-3xl">
+          <div className="surface-panel mb-8 rounded-[2rem] p-6 sm:p-8">
+            <p className="mb-4 section-heading">Legal</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+              {title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
+              {description}
+            </p>
+          </div>
 
-        <MarkdownContent blocks={blocks.filter((block) => block.type !== "heading" || block.level !== 1)} />
+          <div className="surface-panel rounded-[2rem] p-6 sm:p-8">
+            <MarkdownContent blocks={blocks.filter((block) => block.type !== "heading" || block.level !== 1)} />
+          </div>
+        </div>
       </article>
 
       <LegalFooter />

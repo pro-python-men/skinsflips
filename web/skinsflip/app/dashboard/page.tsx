@@ -177,9 +177,7 @@ export default function DashboardPage() {
         <section className="surface-panel rounded-[2.1rem] p-6">
           <div className="space-y-5">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200/75">
-                Ranked live board
-              </p>
+              <p className="section-heading">Ranked live board</p>
               <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
                 Best opportunities right now
               </h1>
@@ -266,9 +264,7 @@ export default function DashboardPage() {
             {topFlip ? (
               <section className="space-y-4">
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
-                    First move
-                  </div>
+                  <div className="section-heading">First move</div>
                   <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
                     Highest-priority flip right now
                   </h2>
@@ -295,9 +291,7 @@ export default function DashboardPage() {
             {nextFlips.length > 0 ? (
               <section className="space-y-4">
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
-                    Continue down the board
-                  </div>
+                  <div className="section-heading">Continue down the board</div>
                   <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
                     Next flips to check
                   </h2>

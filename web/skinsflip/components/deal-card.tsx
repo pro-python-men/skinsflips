@@ -125,8 +125,8 @@ function getQualitySignal({
 
 const toneClassNames: Record<QualityTone, { bar: string; badge: string }> = {
   good: {
-    bar: "from-emerald-300 via-green-400 to-emerald-500",
-    badge: "border-emerald-400/30 bg-emerald-400/12 text-emerald-200",
+    bar: "from-[#f5d07a] via-[#d5a65a] to-[#b8843c]",
+    badge: "border-[#d5a65a]/30 bg-[#d5a65a]/12 text-[#f8e7bf]",
   },
   medium: {
     bar: "from-amber-200 via-amber-300 to-amber-500",
@@ -176,7 +176,7 @@ export function DealCard({
 }: DealCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
-  const profitClassName = profit >= 0 ? "text-emerald-300" : "text-rose-300"
+  const profitClassName = profit >= 0 ? "text-[#f1c87a]" : "text-rose-300"
   const formattedProfit = `${profit >= 0 ? "+" : "-"}${formatCurrency(Math.abs(profit))}`
   const profitPercentValue = profitPercent ?? (buyPrice > 0 ? (profit / buyPrice) * 100 : 0)
   const feeAmount =
@@ -234,7 +234,7 @@ export function DealCard({
     return (
       <Button
         asChild
-        className="h-11 w-full rounded-2xl bg-white text-sm font-semibold text-black transition hover:bg-emerald-200"
+        className="h-11 w-full rounded-2xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
       >
         <a
           href={href}
@@ -280,7 +280,7 @@ export function DealCard({
   return (
     <article
       className={[
-        "group relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,20,24,0.98)_0%,rgba(10,12,15,0.98)_100%)] p-5 text-white transition duration-300",
+        "group relative overflow-hidden rounded-[28px] border border-white/10 bg-card p-5 text-white transition duration-300",
         "hover:-translate-y-1 hover:border-white/18",
         featured || isBest ? "ring-1 ring-white/10" : "",
         isLanding ? "min-h-[420px]" : "",
@@ -297,7 +297,6 @@ export function DealCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_34%)] opacity-80" />
       <div className="relative space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           {(featured || isBest) && (
@@ -319,7 +318,7 @@ export function DealCard({
           <p className="max-w-[24ch] text-[clamp(1.2rem,2vw,1.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
             {name}
           </p>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-200/80">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/52">
             {routeText}
           </p>
         </div>
@@ -368,7 +367,7 @@ export function DealCard({
           {renderPrimaryAction()}
           {renderSecondaryAction()}
           {isTracked ? (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/18 bg-emerald-400/8 px-4 py-3 text-xs font-medium text-emerald-100">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d5a65a]/20 bg-[#d5a65a]/10 px-4 py-3 text-xs font-medium text-[#f8e7bf]">
               <span>Saved to your tracking list</span>
               <Link href={trackedHref} className="underline underline-offset-4">
                 Open tracking

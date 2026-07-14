@@ -82,6 +82,12 @@ export function getConfig() {
     bcrypt: {
       saltRounds: number("BCRYPT_SALT_ROUNDS", 12)
     },
+    steamInventory: {
+      appId: number("STEAM_INVENTORY_APP_ID", 730),
+      contextId: number("STEAM_INVENTORY_CONTEXT_ID", 2),
+      pageSize: number("STEAM_INVENTORY_PAGE_SIZE", 2000),
+      maxPages: number("STEAM_INVENTORY_MAX_PAGES", 3)
+    },
     database: {
       url: process.env.DATABASE_URL || "",
       host: process.env.DB_HOST || "localhost",

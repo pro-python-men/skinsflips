@@ -2,7 +2,9 @@ import { asyncHandler } from "../../shared/middleware/asyncHandler.js";
 import {
   listInventory,
   createInventoryItem,
-  removeInventoryItem
+  removeInventoryItem,
+  getInventorySourceStatus,
+  syncSteamInventory
 } from "./inventory.service.js";
 
 export const getInventory = asyncHandler(async (req, res) => {
@@ -26,5 +28,15 @@ export const deleteInventory = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   await removeInventoryItem({ userId: req.user.id, id });
   res.status(204).send();
+});
+
+export const getInventorySource = asyncHandler(async (req, res) => {
+  const status = await getInventorySourceStatus({ user: req.user });
+  res.status(200).json(status);
+});
+
+export const syncInventoryFromSteam = asyncHandler(async (req, res) => {
+  const result = await syncSteamInventory({ user: req.user });
+  res.status(200).json(result);
 });
 
