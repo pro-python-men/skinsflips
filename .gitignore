@@ -6,6 +6,7 @@ node_modules/
 # Next.js builds (if present in repo)
 web/**/.next/
 web/**/node_modules/
+web/skinsflip/scripts/.cache/
 
 # Local backups/artifacts
 backup/

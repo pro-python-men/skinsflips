@@ -144,6 +144,11 @@ export default function DashboardPage() {
     }
   }
 
+  const handleBudgetSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    void loadFlips()
+  }
+
   useEffect(() => {
     if (isLoadingAuth || !isAuthenticated) return
     loadFlips()
@@ -206,7 +211,10 @@ export default function DashboardPage() {
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-3 rounded-[1.7rem] border border-white/8 bg-white/4 p-4 lg:flex-row lg:items-end">
+            <form
+              onSubmit={handleBudgetSubmit}
+              className="flex flex-col gap-3 rounded-[1.7rem] border border-white/8 bg-white/4 p-4 lg:flex-row lg:items-end"
+            >
               <div className="min-w-0 flex-1">
                 <label className="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   Budget filter
@@ -220,17 +228,68 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={loadFlips} className="h-11 rounded-full px-5 text-sm">
+                <Button type="submit" variant="secondary" className="h-11 rounded-full px-5 text-sm">
                   Refresh board
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setBudget("")}
+                  onClick={() => {
+                    setBudget("")
+                    void loadFlips()
+                  }}
                   className="h-11 rounded-full border border-white/10 bg-white/4 px-5 text-sm text-white hover:bg-white/8"
                 >
                   Clear budget
                 </Button>
+              </div>
+            </form>
+
+            <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-[1.9rem] border border-white/8 bg-white/[0.035] p-6">
+                <div className="max-w-[34rem] space-y-4">
+                  <div className="section-heading">Featured artwork zone</div>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                      Add a custom campaign visual for top flips
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      This block is reserved for a branded skin graphic, seasonal campaign art, or a premium marketplace message placed above the live board.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border border-white/10 bg-background/50 px-3 py-1">
+                      Recommended ratio 16:9
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-background/50 px-3 py-1">
+                      Use character + featured skin
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-background/50 px-3 py-1">
+                      Keep headline safe on left
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative overflow-hidden rounded-[1.9rem] border border-dashed border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5">
+                <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+                <div className="flex h-full min-h-[220px] flex-col justify-between rounded-[1.5rem] border border-white/6 bg-black/18 p-5">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#d6ef63]">
+                      Future artwork placement
+                    </p>
+                    <h3 className="max-w-[20rem] text-xl font-semibold tracking-[-0.04em] text-white">
+                      Hero graphic slot for Best Flips promotions
+                    </h3>
+                    <p className="max-w-[20rem] text-sm text-muted-foreground">
+                      Place a wide campaign image here with a skin, character, and one short CTA-oriented message.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[1.35rem] border border-white/10 bg-white/4 px-4 py-3 text-xs text-muted-foreground">
+                    Safe area: headline on left, product or character art on right, CTA optional in lower-left.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -300,7 +359,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {nextFlips.map((flip) => (
                     <DealCard
                       key={flip.id}

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "download:skins": "node --experimental-strip-types ./scripts/download-skin-images.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

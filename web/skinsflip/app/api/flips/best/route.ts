@@ -32,6 +32,49 @@ function normalizeLiquidity(liquidity: unknown) {
   return undefined;
 }
 
+function toOptionalUsdCents(value: string | null) {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
+function minRelevantBuyCentsFromBudget(maxBuyCents: number) {
+  if (!Number.isFinite(maxBuyCents) || maxBuyCents <= 0) return 0;
+  return Math.max(50, Math.round(maxBuyCents * 0.0025));
+}
+
+function applyBudgetGuard(payload: BestFlipsPayload, url: URL) {
+  const maxBuyCents = toOptionalUsdCents(url.searchParams.get("maxBuyPrice"));
+  if (!maxBuyCents) return payload;
+  const minRelevantBuyCents = minRelevantBuyCentsFromBudget(maxBuyCents);
+
+  const flips = (Array.isArray(payload.flips) ? payload.flips : []).filter((flip) => {
+    const buyCents = Math.round(Number(flip?.buyPrice ?? 0) * 100);
+
+    if (!Number.isFinite(buyCents) || buyCents <= 0) return false;
+    if (buyCents < minRelevantBuyCents) return false;
+    if (buyCents > maxBuyCents) return false;
+    return true;
+  });
+
+  return {
+    ...payload,
+    flips
+  };
+}
+
+function hasInteractiveFilters(url: URL) {
+  return Boolean(
+    url.searchParams.get("maxBuyPrice") ||
+      url.searchParams.get("minProfitUsd") ||
+      url.searchParams.get("minProfitPercent") ||
+      url.searchParams.get("includeLowLiquidity")
+  );
+}
+
 function normalizePayload(data: unknown) {
   const payload =
     data && typeof data === "object" && !Array.isArray(data) ? data : { flips: data };
@@ -95,15 +138,17 @@ async function fetchPublicBestFlips(path: string) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const path = getCacheKey(url);
-  const lastSuccessfulPayload = lastSuccessfulPayloads.get(path) ?? null;
+  const bypassFallbackCache = hasInteractiveFilters(url) && !url.searchParams.get("maxBuyPrice");
+  const lastSuccessfulPayload = bypassFallbackCache ? null : lastSuccessfulPayloads.get(path) ?? null;
 
   const { response, unauthorized: isUnauthorized } = await backendFetch(path);
   if (!isUnauthorized) {
     const data = await response!.json().catch(() => null);
     if (response!.ok) {
-      const out = normalizePayload(data);
-      if (out.flips.length > 0) {
-        lastSuccessfulPayloads.set(path, out);
+      const normalized = normalizePayload(data);
+      const out = applyBudgetGuard(normalized, url);
+      if (!bypassFallbackCache && normalized.flips.length > 0) {
+        lastSuccessfulPayloads.set(path, normalized);
       }
       return NextResponse.json(out, { status: 200 });
     }
@@ -113,9 +158,10 @@ export async function GET(request: Request) {
     try {
       const publicResult = await fetchPublicBestFlips(path);
       if (publicResult.response.ok) {
-        const out = normalizePayload(publicResult.data);
-        if (out.flips.length > 0) {
-          lastSuccessfulPayloads.set(path, out);
+        const normalized = normalizePayload(publicResult.data);
+        const out = applyBudgetGuard(normalized, url);
+        if (!bypassFallbackCache && normalized.flips.length > 0) {
+          lastSuccessfulPayloads.set(path, normalized);
         }
         return NextResponse.json(out, { status: 200 });
       }
@@ -125,7 +171,7 @@ export async function GET(request: Request) {
   }
 
   if (lastSuccessfulPayload) {
-    return NextResponse.json(
+    const guardedPayload = applyBudgetGuard(
       {
         ...lastSuccessfulPayload,
         flips: lastSuccessfulPayload.flips.map((flip) => ({
@@ -135,6 +181,11 @@ export async function GET(request: Request) {
         isCached: true,
         lastUpdated: lastSuccessfulPayload.lastUpdated
       },
+      url
+    );
+
+    return NextResponse.json(
+      guardedPayload,
       { status: 200 }
     );
   }

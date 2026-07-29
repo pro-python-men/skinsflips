@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Boxes, RefreshCw, ShieldCheck, Sparkles, DownloadCloud, Link2 } from "lucide-react";
+import { DownloadCloud, Link2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-context";
 import { DashboardLayout } from "@/components/dashboard-layout";
+import { LocalSkinImage } from "@/components/local-skin-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -154,24 +155,6 @@ function getSteamSellBadge(item: SteamInventoryItem) {
 
 const SELL_MARKETPLACE = "Skinport";
 const SELL_MARKETPLACE_HREF = "https://skinport.com/market";
-
-function InventoryStatusCard({
-  label,
-  value,
-  description,
-}: {
-  label: string;
-  value: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-    </div>
-  );
-}
 
 function getSellRecommendation(row: InventoryRow) {
   if (row.profit > 0 && row.roi >= 10) {
@@ -378,18 +361,18 @@ export default function InventoryPage() {
     <DashboardLayout title="Inventory" requireAuth>
       <div className="space-y-6">
         <section className="surface-panel rounded-[2rem] p-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
-            <div className="space-y-3">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
+            <div className="space-y-2">
               <p className="section-heading">Steam inventory workspace</p>
-              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-white">
-                Steam inventory for the connected user
+              <h1 className="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl">
+                Steam inventory
               </h1>
-              <p className="max-w-[66ch] text-sm text-muted-foreground">
-                Zakladka `inventory` pobiera teraz przedmioty bezposrednio ze Steam. Gdy konto ma publiczne inventory CS2, lista ponizej pokazuje realne skiny z tego konta, a reczne pozycje zostaja jako fallback.
+              <p className="max-w-[52ch] text-sm text-muted-foreground">
+                Syncuj publiczne inventory Steam i przeglądaj itemy w jednym miejscu.
               </p>
             </div>
 
-            <div className="rounded-[1.7rem] border border-white/8 bg-white/4 p-5">
+            <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -407,56 +390,66 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <InventoryStatusCard
-                  label="Current mode"
-                  value={sourceStatus?.connected ? "Steam live feed" : "Manual fallback"}
-                  description="Steam items are displayed first, while manual items stay available as a backup workflow."
-                />
-                <InventoryStatusCard
-                  label="Next source"
-                  value={sourceStatus?.connected ? "Steam inventory ready" : "Connect Steam account"}
-                  description={
-                    sourceStatus?.connected
-                      ? `App ${sourceStatus.inventoryAppId}, context ${sourceStatus.inventoryContextId} is configured for live sync.`
-                      : "A connected Steam account is required before inventory sync can run."
-                  }
-                />
-                <InventoryStatusCard
-                  label="Sell engine"
-                  value={SELL_MARKETPLACE}
-                  description="Exit recommendations can stay on top once sync is connected."
-                />
-              </div>
+              <div className="mt-4 rounded-[1.3rem] border border-white/8 bg-background/40 p-4">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {sourceStatus?.connected ? "Import your Steam items" : "Steam connection required"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {sourceStatus?.connected
+                        ? "Sync inventory first, then review where each item is most worth selling."
+                        : "Connect Steam first to start importing inventory automatically."}
+                    </p>
+                  </div>
 
-              <div className="mt-5 flex flex-col gap-3 rounded-[1.5rem] border border-white/8 bg-background/40 p-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">Steam import action</p>
-                  <p className="text-sm text-muted-foreground">
-                    Pull the user&apos;s public CS2 inventory from Steam and refresh the visible item list below.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="rounded-full"
-                    onClick={() => {
-                      void loadSourceStatus();
-                    }}
-                  >
-                    Check source
-                  </Button>
-                  <Button
-                    type="button"
-                    className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={!sourceStatus?.syncSupported || syncingSteam}
-                    onClick={() => {
-                      void handleSyncSteamInventory();
-                    }}
-                  >
-                    {syncingSteam ? "Syncing Steam inventory..." : "Sync Steam inventory"}
-                  </Button>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.1rem] border border-white/8 bg-white/4 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                        Next step
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        Sync inventory
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Import current Steam items into the sell view below.
+                      </p>
+                    </div>
+                    <div className="rounded-[1.1rem] border border-white/8 bg-white/4 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                        Goal
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        Find the best place to sell
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Compare visible items and move straight to the best marketplace.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <Button
+                      type="button"
+                      className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 sm:flex-1"
+                      disabled={!sourceStatus?.syncSupported || syncingSteam}
+                      onClick={() => {
+                        void handleSyncSteamInventory();
+                      }}
+                    >
+                      {syncingSteam ? "Synchronizuję..." : "Sync Steam inventory"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-full sm:flex-1"
+                      onClick={() => {
+                        void loadSourceStatus();
+                      }}
+                    >
+                      Odśwież status
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -465,45 +458,6 @@ export default function InventoryPage() {
                   {steamSyncError}
                 </div>
               ) : null}
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <div className="surface-panel rounded-[1.9rem] p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-white/4 text-primary">
-                <Boxes className="h-5 w-5" />
-              </div>
-              <div className="space-y-2">
-                <p className="section-heading">Future sync flow</p>
-                <h2 className="text-xl font-semibold tracking-[-0.04em] text-foreground">
-                  Steam feed is active
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  The layout now treats Steam as the primary inventory source, with separate space for imported holdings, source state, and manual overrides.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="surface-panel rounded-[1.9rem] p-6">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
-                <RefreshCw className="h-5 w-5 text-primary" />
-                <p className="mt-4 text-sm font-semibold text-foreground">Sync status block</p>
-                <p className="mt-2 text-sm text-muted-foreground">Shows live import state, item counts, and the last Steam refresh.</p>
-              </div>
-              <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <p className="mt-4 text-sm font-semibold text-foreground">Account source block</p>
-                <p className="mt-2 text-sm text-muted-foreground">Shows the connected Steam identity and inventory source metadata.</p>
-              </div>
-              <div className="rounded-[1.4rem] border border-white/8 bg-white/4 p-4">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <p className="mt-4 text-sm font-semibold text-foreground">Sell action block</p>
-                <p className="mt-2 text-sm text-muted-foreground">Manual positions can still carry custom valuation and sell recommendations.</p>
-              </div>
             </div>
           </div>
         </section>
@@ -594,17 +548,13 @@ export default function InventoryPage() {
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-[1.2rem] border border-white/8 bg-background/60">
-                      {item.iconUrl ? (
-                        <img
-                          src={item.iconUrl}
-                          alt={item.name}
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        <Boxes className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
+                    <LocalSkinImage
+                      name={item.marketHashName || item.name}
+                      alt={item.name}
+                      containerClassName="flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-[1.2rem] border border-white/8 bg-background/60"
+                      imageClassName="h-full w-full object-contain"
+                      placeholderLabel="Skin"
+                    />
 
                     <div className="min-w-0 flex-1 space-y-2">
                       <div>
@@ -747,97 +697,40 @@ export default function InventoryPage() {
           </div>
         ) : (
           <>
-            {computed.topOpportunity ? (
-              <section className="surface-panel rounded-[2rem] p-6">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="space-y-3">
-                    <div className="section-heading">Top item from current holdings</div>
-                    <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
-                      {computed.topOpportunity.skin}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      This card already mirrors how the best sell candidate can be highlighted after Steam inventory sync is added.
-                    </p>
+            <section className="grid gap-4 md:grid-cols-2">
+              <div className="surface-panel rounded-[1.9rem] p-6">
+                <div className="space-y-1">
+                  <div className="section-heading">Manual holdings value</div>
+                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">
+                    {formatCurrency(computed.totalValue)}
                   </div>
-
-                  <div className="space-y-2 text-left lg:text-right">
-                    <div
-                      className={`text-4xl font-semibold tracking-[-0.05em] ${
-                        computed.topOpportunity.profit >= 0 ? "text-[#f1c87a]" : "text-rose-300"
-                      }`}
-                    >
-                      {formatCurrency(computed.topOpportunity.profit)}
-                    </div>
-                    <div className="text-sm font-medium text-foreground">
-                      {formatPercent(computed.topOpportunity.roi, 1)} ROI
-                    </div>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Current value across manually tracked holdings.
+                  </p>
                 </div>
+              </div>
 
-                <div className="mt-6 grid gap-3 md:grid-cols-4">
-                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Buy price
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-foreground">
-                      {formatCurrency(computed.topOpportunity.purchasePrice)}
-                    </div>
+              <div className="surface-panel rounded-[1.9rem] p-6">
+                <div className="space-y-1">
+                  <div className="section-heading">Manual sellable profit</div>
+                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#f1c87a]">
+                    {formatCurrency(computed.totalPotentialProfit)}
                   </div>
-
-                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Current best sell
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-foreground">
-                      {formatCurrency(computed.topOpportunity.currentPrice)}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Quantity
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-foreground">
-                      {computed.topOpportunity.quantity}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Current value
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-foreground">
-                      {formatCurrency(computed.topOpportunity.value)}
-                    </div>
-                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Total profit currently available across profitable manual positions.
+                  </p>
                 </div>
-
-                <div className="mt-6 flex flex-col gap-3 rounded-[1.6rem] border border-[#d5a65a]/20 bg-[#d5a65a]/6 p-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      Best marketplace to sell right now: {SELL_MARKETPLACE}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Current valuation points to the strongest exit opportunity here.
-                    </p>
-                  </div>
-                  <Button asChild className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90">
-                    <a href={SELL_MARKETPLACE_HREF} target="_blank" rel="noreferrer">
-                      Sell on {SELL_MARKETPLACE}
-                    </a>
-                  </Button>
-                </div>
-              </section>
-            ) : null}
+              </div>
+            </section>
 
             <section className="space-y-4">
               <div className="space-y-1">
-                <div className="section-heading">Holdings board</div>
+                <div className="section-heading">Manual holdings</div>
                 <h3 className="text-xl font-semibold tracking-[-0.04em] text-foreground">
-                  Current inventory positions and next actions
+                  Custom positions and next actions
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Each card is already structured to accept a real Steam item, its value, and its recommended sell path.
+                  These are manual overrides or fallback items outside the live Steam feed above.
                 </p>
               </div>
 
@@ -956,32 +849,6 @@ export default function InventoryPage() {
                     </article>
                   );
                 })}
-              </div>
-            </section>
-
-            <section className="grid gap-4 md:grid-cols-2">
-              <div className="surface-panel rounded-[1.9rem] p-6">
-                <div className="space-y-1">
-                  <div className="section-heading">Portfolio signal</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                    {formatCurrency(computed.totalValue)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Current value across the holdings shown in this workspace.
-                  </p>
-                </div>
-              </div>
-
-              <div className="surface-panel rounded-[1.9rem] p-6">
-                <div className="space-y-1">
-                  <div className="section-heading">Sellable profit now</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#f1c87a]">
-                    {formatCurrency(computed.totalPotentialProfit)}
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Total profit currently available across profitable positions in this feed.
-                  </p>
-                </div>
               </div>
             </section>
           </>

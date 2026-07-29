@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
+import { LocalSkinImage } from "@/components/local-skin-image"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { formatCurrency, formatPercent } from "@/lib/format"
@@ -123,17 +124,14 @@ function getQualitySignal({
   }
 }
 
-const toneClassNames: Record<QualityTone, { bar: string; badge: string }> = {
+const toneClassNames: Record<QualityTone, { badge: string }> = {
   good: {
-    bar: "from-[#f5d07a] via-[#d5a65a] to-[#b8843c]",
     badge: "border-[#d5a65a]/30 bg-[#d5a65a]/12 text-[#f8e7bf]",
   },
   medium: {
-    bar: "from-amber-200 via-amber-300 to-amber-500",
     badge: "border-amber-300/30 bg-amber-300/12 text-amber-100",
   },
   slow: {
-    bar: "from-rose-200 via-rose-400 to-red-500",
     badge: "border-rose-300/30 bg-rose-300/12 text-rose-100",
   },
 }
@@ -280,10 +278,10 @@ export function DealCard({
   return (
     <article
       className={[
-        "group relative overflow-hidden rounded-[28px] border border-white/10 bg-card p-5 text-white transition duration-300",
+        "group relative self-start overflow-hidden rounded-[24px] border border-white/10 bg-card p-4 text-white transition duration-300",
         "hover:-translate-y-1 hover:border-white/18",
         featured || isBest ? "ring-1 ring-white/10" : "",
-        isLanding ? "min-h-[420px]" : "",
+        isLanding ? "min-h-[320px]" : "",
         isClickable ? "cursor-pointer" : "",
       ].join(" ")}
       onClick={onCardClick}
@@ -297,7 +295,7 @@ export function DealCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
     >
-      <div className="relative space-y-5">
+      <div className="relative space-y-3.5">
         <div className="flex flex-wrap items-center gap-2">
           {(featured || isBest) && (
             <span className="rounded-full border border-white/14 bg-white/8 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/78">
@@ -314,74 +312,90 @@ export function DealCard({
           ) : null}
         </div>
 
-        <div className="space-y-2">
-          <p className="max-w-[24ch] text-[clamp(1.2rem,2vw,1.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
-            {name}
-          </p>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/52">
-            {routeText}
-          </p>
-        </div>
+        <div className="flex items-start gap-3">
+          <LocalSkinImage
+            name={name}
+            containerClassName={[
+              "flex shrink-0 items-center justify-center overflow-hidden rounded-[1rem] border border-white/8 bg-white/5",
+              featured || isBest ? "h-20 w-20" : "h-16 w-16",
+            ].join(" ")}
+            imageClassName="h-full w-full object-contain p-2"
+            placeholderLabel="Skin"
+          />
 
-        <div className="rounded-[22px] border border-white/10 bg-black/18 p-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">Estimated profit</p>
-              <div className={`mt-2 text-4xl font-semibold leading-none tracking-[-0.05em] ${profitClassName}`}>
-                {formattedProfit}
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <div className="space-y-1.5">
+              <p className="max-w-[24ch] text-[clamp(1.05rem,1.5vw,1.35rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-white">
+                {name}
+              </p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/46">
+                {routeText}
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">Estimated profit</p>
+                  <p className={`mt-2 text-[clamp(1.9rem,3vw,2.4rem)] font-semibold leading-none tracking-[-0.05em] ${profitClassName}`}>
+                    {formattedProfit}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">ROI</p>
+                  <p className="mt-1 text-lg font-semibold text-white">{formatPercent(profitPercentValue, 0)}</p>
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">ROI</p>
-              <p className="mt-1 text-lg font-semibold text-white">{formatPercent(profitPercentValue, 0)}</p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-[16px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">Buy</p>
+                <p className="mt-1 text-base font-semibold text-white">{formatCurrency(buyPrice)}</p>
+                <p className="mt-1 text-xs text-white/42">{sourceBuy}</p>
+              </div>
+              <div className="rounded-[16px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">Sell</p>
+                <p className="mt-1 text-base font-semibold text-white">{formatCurrency(sellPrice)}</p>
+                <p className="mt-1 text-xs text-white/42">{sourceSell}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-white/58">
+              <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1">
+                Score {quality.value}/100
+              </span>
+              {typeof confidence === "number" ? (
+                <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1">
+                  Confidence {confidence}%
+                </span>
+              ) : null}
+              <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1">
+                {realSignalText}
+              </span>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-2">
+              {renderPrimaryAction()}
+              {renderSecondaryAction()}
             </div>
           </div>
-          <p className="mt-3 text-sm text-white/62">{realSignalText}</p>
         </div>
-
-        <div className="rounded-[22px] border border-white/10 bg-white/4 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">Flip quality</p>
-              <p className="mt-1 text-sm font-medium text-white">{quality.helper}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">Score</p>
-              <p className="mt-1 text-base font-semibold text-white">{quality.value}/100</p>
-            </div>
+        {isTracked ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d5a65a]/20 bg-[#d5a65a]/10 px-4 py-3 text-xs font-medium text-[#f8e7bf]">
+            <span>Saved to your tracking list</span>
+            <Link href={trackedHref} className="underline underline-offset-4">
+              Open tracking
+            </Link>
           </div>
-          <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/8">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r ${toneClasses.bar}`}
-              style={{ width: `${quality.value}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-3 grid-cols-2">
-          {renderMetric("Buy", formatCurrency(buyPrice), sourceBuy)}
-          {renderMetric("Sell", formatCurrency(sellPrice), sourceSell)}
-        </div>
-
-        <div className="space-y-2">
-          {renderPrimaryAction()}
-          {renderSecondaryAction()}
-          {isTracked ? (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d5a65a]/20 bg-[#d5a65a]/10 px-4 py-3 text-xs font-medium text-[#f8e7bf]">
-              <span>Saved to your tracking list</span>
-              <Link href={trackedHref} className="underline underline-offset-4">
-                Open tracking
-              </Link>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
 
         <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-auto w-full justify-between rounded-2xl border border-white/8 bg-white/3 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-white/64 hover:bg-white/7 hover:text-white"
+              className="h-auto w-full justify-between rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-white/58 hover:bg-white/7 hover:text-white"
             >
               <span>See details</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${isDetailsOpen ? "rotate-180" : ""}`} />

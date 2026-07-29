@@ -49,6 +49,72 @@ const primaryNav = [
   { href: "/dashboard", label: "Dashboard" },
 ]
 
+const promoPlacements = [
+  {
+    id: "promo-sell",
+    eyebrow: "Featured campaign",
+    title: "Instant sell flow for users who want fast exits",
+    copy:
+      "Use this banner for a polished hero-style scene focused on quick selling, secure cashout, and premium account trust.",
+    cta: "Sell skins faster",
+    note: "Artwork 01 placeholder",
+    ratio: "16:7",
+    align: "right" as const,
+  },
+  {
+    id: "promo-buy",
+    eyebrow: "Marketplace edge",
+    title: "Best price hunting across live CS2 markets",
+    copy:
+      "Use this slot for a visual about finding underpriced skins, cross-market comparison, and smart buying decisions.",
+    cta: "Check live prices",
+    note: "Artwork 02 placeholder",
+    ratio: "21:8",
+    align: "right" as const,
+  },
+  {
+    id: "promo-loyalty",
+    eyebrow: "Retention block",
+    title: "Loyalty and fee discounts for active sellers",
+    copy:
+      "Use this section for a rewards-style graphic: gift boxes, discount cues, or account progression for repeat sellers.",
+    cta: "See seller benefits",
+    note: "Artwork 03 placeholder",
+    ratio: "5:4",
+    align: "center" as const,
+  },
+]
+
+function ArtworkPlaceholder({
+  note,
+  ratio,
+  align = "center",
+}: {
+  note: string
+  ratio: string
+  align?: "center" | "right"
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.7rem] border border-dashed border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(205,233,104,0.10),transparent_38%)]" />
+      <div className="relative flex min-h-[260px] items-center justify-center p-6 sm:min-h-[320px]">
+        <div
+          className={[
+            "w-full max-w-[520px] rounded-[1.4rem] border border-white/10 bg-black/18 px-6 py-5 text-sm",
+            align === "right" ? "ml-auto" : "mx-auto",
+          ].join(" ")}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/80">{note}</p>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">{ratio}</p>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            Final graphic goes here. Keep character cutout on the right and leave breathing room for headline-safe crop.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function HomePage() {
   const router = useRouter()
   const updateIntervalMs = 15000
@@ -348,6 +414,35 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="py-8">
+          <div className="surface-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center">
+              <div className="space-y-4">
+                <p className="section-heading">{promoPlacements[0].eyebrow}</p>
+                <h2 className="max-w-[12ch] text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
+                  {promoPlacements[0].title}
+                </h2>
+                <p className="max-w-[56ch] text-sm leading-7 text-muted-foreground sm:text-base">
+                  {promoPlacements[0].copy}
+                </p>
+                <Button
+                  type="button"
+                  onClick={goToDeals}
+                  className="rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  {promoPlacements[0].cta}
+                </Button>
+              </div>
+
+              <ArtworkPlaceholder
+                note={promoPlacements[0].note}
+                ratio={promoPlacements[0].ratio}
+                align={promoPlacements[0].align}
+              />
+            </div>
+          </div>
+        </section>
+
         <section id="live-board" className="py-8 lg:py-10">
           <div className="surface-panel rounded-[2rem] p-6 sm:p-8">
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -442,7 +537,7 @@ export default function HomePage() {
                 ) : null}
 
                 {sideFlips.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {sideFlips.map((flip, index) => (
                       <DealCard
                         key={`live-${flip.id}-${index}`}
@@ -460,6 +555,63 @@ export default function HomePage() {
                 ) : null}
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="grid gap-6 py-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+          <div className="surface-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+              <div className="space-y-4">
+                <p className="section-heading">{promoPlacements[1].eyebrow}</p>
+                <h2 className="max-w-[13ch] text-3xl font-semibold tracking-[-0.05em] text-white">
+                  {promoPlacements[1].title}
+                </h2>
+                <p className="text-sm leading-7 text-muted-foreground">
+                  {promoPlacements[1].copy}
+                </p>
+                <Button
+                  type="button"
+                  onClick={goToDeals}
+                  className="rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  {promoPlacements[1].cta}
+                </Button>
+              </div>
+
+              <ArtworkPlaceholder
+                note={promoPlacements[1].note}
+                ratio={promoPlacements[1].ratio}
+                align={promoPlacements[1].align}
+              />
+            </div>
+          </div>
+
+          <div className="surface-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
+            <div className="space-y-5">
+              <div className="space-y-3">
+                <p className="section-heading">{promoPlacements[2].eyebrow}</p>
+                <h2 className="max-w-[12ch] text-3xl font-semibold tracking-[-0.05em] text-white">
+                  {promoPlacements[2].title}
+                </h2>
+                <p className="text-sm leading-7 text-muted-foreground">
+                  {promoPlacements[2].copy}
+                </p>
+              </div>
+
+              <ArtworkPlaceholder
+                note={promoPlacements[2].note}
+                ratio={promoPlacements[2].ratio}
+                align={promoPlacements[2].align}
+              />
+
+              <Button
+                type="button"
+                onClick={goToDeals}
+                className="rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {promoPlacements[2].cta}
+              </Button>
+            </div>
           </div>
         </section>
 
